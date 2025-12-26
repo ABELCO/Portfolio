@@ -334,8 +334,8 @@
 
         <div id="controls-info">
             <h3>🎮 CONTROLES</h3>
-            <p>Toca IZQUIERDA/DERECHA para girar</p>
-            <p>Inclina el iPad para más control</p>
+            <p>← → o A/D para girar</p>
+            <p>También táctil e inclinación</p>
         </div>
 
         <div id="speed-meter">
@@ -436,6 +436,8 @@
         let discoveredWorks = new Set();
         let touchLeft = false;
         let touchRight = false;
+        let keyLeft = false; // Keyboard controls
+        let keyRight = false;
         let gyroEnabled = false;
         let isFalling = false;
         let treeObjects = []; // Store tree positions for collision detection
@@ -525,13 +527,16 @@
 
             geometry.computeVertexNormals();
 
-            // Realistic snow material
+            // Realistic snow material with enhanced shader
             const material = new THREE.MeshStandardMaterial({
-                color: 0xfafafa, // Slightly off-white for more realism
-                roughness: 0.85,
-                metalness: 0.0,
-                envMapIntensity: 0.5,
+                color: 0xfcfcfc, // Pure white with slight warmth
+                roughness: 0.75,
+                metalness: 0.05, // Tiny bit of metalness for ice crystals
+                envMapIntensity: 0.8,
                 flatShading: false, // Smooth shading for better look
+                emissive: 0xffffff,
+                emissiveIntensity: 0.03, // Subtle glow from snow reflection
+                // Note: displacement would need texture, using geometry instead
             });
 
             const mountain = new THREE.Mesh(geometry, material);
@@ -544,28 +549,46 @@
         const mountain = createSnowMountain();
         scene.add(mountain);
 
-        // Create low-poly skier
+        // Create low-poly skier with METALLIC shader
         function createSkier() {
             const skierGroup = new THREE.Group();
 
-            // Body (main cylinder)
+            // Body (main cylinder) - Metallic red suit
             const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 6);
-            const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xff4444 });
+            const bodyMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff2244,
+                metalness: 0.7,
+                roughness: 0.2,
+                emissive: 0x330000,
+                emissiveIntensity: 0.2
+            });
             const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
             body.castShadow = true;
             skierGroup.add(body);
 
-            // Head (sphere)
-            const headGeometry = new THREE.SphereGeometry(0.4, 6, 6);
-            const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffdbac });
+            // Head (sphere) - Shiny helmet
+            const headGeometry = new THREE.SphereGeometry(0.4, 8, 8);
+            const headMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffcc00,
+                metalness: 0.9,
+                roughness: 0.1,
+                emissive: 0x332200,
+                emissiveIntensity: 0.3
+            });
             const head = new THREE.Mesh(headGeometry, headMaterial);
             head.position.y = 1.2;
             head.castShadow = true;
             skierGroup.add(head);
 
-            // Arms
+            // Arms - Metallic
             const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 4);
-            const armMaterial = new THREE.MeshStandardMaterial({ color: 0xff4444 });
+            const armMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff2244,
+                metalness: 0.7,
+                roughness: 0.2,
+                emissive: 0x330000,
+                emissiveIntensity: 0.2
+            });
 
             const leftArm = new THREE.Mesh(armGeometry, armMaterial);
             leftArm.position.set(-0.5, 0.3, 0);
@@ -579,9 +602,15 @@
             rightArm.castShadow = true;
             skierGroup.add(rightArm);
 
-            // Skis
+            // Skis - Shiny metallic blue
             const skiGeometry = new THREE.BoxGeometry(0.15, 0.1, 2);
-            const skiMaterial = new THREE.MeshStandardMaterial({ color: 0x00d4ff });
+            const skiMaterial = new THREE.MeshStandardMaterial({
+                color: 0x00d4ff,
+                metalness: 0.9,
+                roughness: 0.1,
+                emissive: 0x003344,
+                emissiveIntensity: 0.3
+            });
 
             const leftSki = new THREE.Mesh(skiGeometry, skiMaterial);
             leftSki.position.set(-0.25, -1, 0.3);
@@ -593,9 +622,13 @@
             rightSki.castShadow = true;
             skierGroup.add(rightSki);
 
-            // Ski poles
-            const poleGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1.5, 4);
-            const poleMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            // Ski poles - Metallic chrome
+            const poleGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1.5, 6);
+            const poleMaterial = new THREE.MeshStandardMaterial({
+                color: 0x888888,
+                metalness: 0.95,
+                roughness: 0.05
+            });
 
             const leftPole = new THREE.Mesh(poleGeometry, poleMaterial);
             leftPole.position.set(-0.7, -0.2, 0.5);
@@ -617,9 +650,9 @@
         const skier = createSkier();
         scene.add(skier);
 
-        // Initial position - will be set properly after getTerrainHeight is defined
+        // Initial position - START CLOSER TO MOUNTAIN, already skiing
         const startX = 0;
-        const startZ = 200;
+        const startZ = 150; // Closer to action (was 200)
 
         // Create artwork displays (low-poly frames) - UPDATED for bigger mountain
         const artworks = [];
@@ -776,9 +809,31 @@
             });
         }
 
-        // Start button
+        // Keyboard controls
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                keyLeft = true;
+                e.preventDefault();
+            }
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                keyRight = true;
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                keyLeft = false;
+            }
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                keyRight = false;
+            }
+        });
+
+        // Start button - Auto start with initial speed
         document.getElementById('start-button').addEventListener('click', () => {
             gameStarted = true;
+            gameSpeed = 15; // Start with initial downhill speed
             document.getElementById('start-button').style.display = 'none';
             document.getElementById('controls-info').style.display = 'block';
         });
@@ -885,10 +940,10 @@
                 gameSpeed *= FRICTION; // Apply friction
                 gameSpeed = Math.max(0, Math.min(gameSpeed, MAX_SPEED));
 
-                // Steering with speed-based turn rate
+                // Steering with speed-based turn rate (keyboard, touch, and gyro)
                 let steerInput = 0;
-                if (touchLeft) steerInput -= 1;
-                if (touchRight) steerInput += 1;
+                if (touchLeft || keyLeft) steerInput -= 1;
+                if (touchRight || keyRight) steerInput += 1;
                 if (gyroEnabled && Math.abs(skierTilt) > 0.1) {
                     steerInput += skierTilt * 0.5;
                 }
@@ -930,20 +985,17 @@
                     skier.position.z = nextZ;
                 }
 
-                // Realistic terrain following with gravity
+                // IMPROVED terrain following with smooth collision
                 const targetHeight = currentHeight + 2;
+                const heightDifference = targetHeight - skier.position.y;
 
-                // Apply gravity
-                velocityY -= GRAVITY * deltaTime;
-                skier.position.y += velocityY * deltaTime;
+                // Apply gravity when in air
+                if (heightDifference > 0.1) {
+                    velocityY -= GRAVITY * deltaTime;
+                    skier.position.y += velocityY * deltaTime;
 
-                // Ground collision
-                if (skier.position.y <= targetHeight) {
-                    skier.position.y = targetHeight;
-                    velocityY = 0;
-                } else {
-                    // In the air - check if landing angle is too steep (higher threshold for more gravity)
-                    if (velocityY < -20) {
+                    // Check for hard landing
+                    if (velocityY < -25) {
                         isFalling = true;
                         gameStarted = false;
                         setTimeout(() => {
@@ -951,6 +1003,19 @@
                             document.getElementById('game-over').querySelector('h2').textContent = '¡CAÍDA FUERTE!';
                             document.getElementById('game-over').style.display = 'block';
                         }, 1000);
+                    }
+                } else {
+                    // On or very close to ground - STICK to terrain perfectly
+                    const smoothingFactor = 0.3; // How fast to snap to terrain
+                    skier.position.y += heightDifference * smoothingFactor;
+
+                    // Dampen velocity when on ground
+                    velocityY *= 0.5;
+
+                    // Reset velocity if very close to ground
+                    if (Math.abs(heightDifference) < 0.05) {
+                        velocityY = 0;
+                        skier.position.y = targetHeight; // Perfect alignment
                     }
                 }
 
