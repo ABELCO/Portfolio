@@ -650,9 +650,9 @@
         const skier = createSkier();
         scene.add(skier);
 
-        // Initial position - START CLOSER TO MOUNTAIN, already skiing
+        // Initial position - START MUCH CLOSER TO SURFACE
         const startX = 0;
-        const startZ = 150; // Closer to action (was 200)
+        const startZ = 100; // Much closer to center of mountain
 
         // Create artwork displays (low-poly frames) - UPDATED for bigger mountain
         const artworks = [];
@@ -830,10 +830,10 @@
             }
         });
 
-        // Start button - Auto start with initial speed
+        // Start button - Auto start with gentle initial speed
         document.getElementById('start-button').addEventListener('click', () => {
             gameStarted = true;
-            gameSpeed = 15; // Start with initial downhill speed
+            gameSpeed = 10; // Start with gentle downhill speed
             document.getElementById('start-button').style.display = 'none';
             document.getElementById('controls-info').style.display = 'block';
         });
@@ -985,16 +985,19 @@
                     skier.position.z = nextZ;
                 }
 
-                // IMPROVED terrain following with smooth collision
-                const targetHeight = currentHeight + 2;
-                const heightDifference = targetHeight - skier.position.y;
+                // FIXED terrain collision - NEVER go through mountain
+                const targetHeight = currentHeight + 2; // 2 units above terrain
 
-                // Apply gravity when in air
-                if (heightDifference > 0.1) {
-                    velocityY -= GRAVITY * deltaTime;
-                    skier.position.y += velocityY * deltaTime;
+                // Apply gravity
+                velocityY -= GRAVITY * deltaTime;
+                skier.position.y += velocityY * deltaTime;
 
-                    // Check for hard landing
+                // CRITICAL: Collision detection - prevent going through terrain
+                if (skier.position.y < targetHeight) {
+                    // Hit the ground or inside terrain - STOP and align
+                    skier.position.y = targetHeight; // Force correct position
+
+                    // Check for hard landing based on impact velocity
                     if (velocityY < -25) {
                         isFalling = true;
                         gameStarted = false;
@@ -1004,34 +1007,40 @@
                             document.getElementById('game-over').style.display = 'block';
                         }, 1000);
                     }
-                } else {
-                    // On or very close to ground - STICK to terrain perfectly
-                    const smoothingFactor = 0.3; // How fast to snap to terrain
-                    skier.position.y += heightDifference * smoothingFactor;
 
-                    // Dampen velocity when on ground
-                    velocityY *= 0.5;
-
-                    // Reset velocity if very close to ground
-                    if (Math.abs(heightDifference) < 0.05) {
-                        velocityY = 0;
-                        skier.position.y = targetHeight; // Perfect alignment
-                    }
+                    // Reset vertical velocity when on ground
+                    velocityY = 0;
+                } else if (skier.position.y < targetHeight + 0.5) {
+                    // Very close to ground - apply damping for smooth riding
+                    const heightDiff = targetHeight - skier.position.y;
+                    skier.position.y += heightDiff * 0.5; // Smooth approach
+                    velocityY *= 0.7; // Dampen velocity near ground
                 }
 
-                // Calculate terrain slope for skier tilt
+                // Calculate terrain slope for skier tilt with CENTER OF GRAVITY
                 const forwardHeight = getTerrainHeight(
                     skier.position.x - Math.sin(skierRotation) * 2,
                     skier.position.z + Math.cos(skierRotation) * 2
                 );
                 const terrainSlope = (currentHeight - forwardHeight) / 2;
 
-                // Realistic skier rotation based on terrain and movement
-                skier.rotation.z = -steerInput * 0.3 * (gameSpeed / 30); // Lean into turns
-                skier.rotation.x = Math.atan(terrainSlope) * 0.7; // Match terrain slope
+                // IMPROVED skier rotation with balance and center of gravity
+                // Lean into turns but with stability
+                const leanAngle = -steerInput * 0.25 * Math.min(gameSpeed / 30, 1);
+                const maxLean = 0.4; // Maximum lean angle (radians)
+                skier.rotation.z = Math.max(-maxLean, Math.min(maxLean, leanAngle));
 
-                // Check for too steep slopes (increased limit for bigger mountain)
-                if (slopeAngle > 65) {
+                // Match terrain slope with damping for stability
+                const slopeRotation = Math.atan(terrainSlope) * 0.5; // Reduced from 0.7 for more stability
+                skier.rotation.x = slopeRotation;
+
+                // AUTO-BALANCE: Gradually return to upright when not turning
+                if (Math.abs(steerInput) < 0.1) {
+                    skier.rotation.z *= 0.9; // Slowly return to center
+                }
+
+                // More forgiving slope limit - only fall on EXTREME slopes
+                if (slopeAngle > 75) { // Increased from 65 for better playability
                     isFalling = true;
                     gameStarted = false;
                     setTimeout(() => {
