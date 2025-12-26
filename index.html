@@ -270,9 +270,10 @@
         }
 
         #game-over h2 {
-            font-size: 3rem;
+            font-size: 2.5rem;
             color: #00d4ff;
             margin-bottom: 20px;
+            text-align: center;
         }
 
         #game-over p {
@@ -354,7 +355,7 @@
     <div id="game-over">
         <h2>¡FIN DEL RECORRIDO!</h2>
         <p>Has descubierto <span id="final-count">0</span> obras</p>
-        <button class="restart-button" onclick="location.reload()">VOLVER A EMPEZAR</button>
+        <button class="restart-button" onclick="location.reload()">VOLVER A INTENTAR</button>
     </div>
 
     <!-- Popups para cada obra -->
@@ -429,12 +430,15 @@
         // Game state
         let gameStarted = false;
         let gameSpeed = 0;
+        let velocityY = 0; // Vertical velocity for gravity
         let skierRotation = 0;
         let skierTilt = 0;
         let discoveredWorks = new Set();
         let touchLeft = false;
         let touchRight = false;
         let gyroEnabled = false;
+        let isFalling = false;
+        let treeObjects = []; // Store tree positions for collision detection
 
         // Scene setup
         const scene = new THREE.Scene();
@@ -658,7 +662,13 @@
             const side = Math.random() > 0.5 ? 1 : -1;
             const x = side * (30 + Math.random() * 40);
             const z = -150 + Math.random() * 400;
-            scene.add(createTree(x, z));
+            const tree = createTree(x, z);
+            scene.add(tree);
+            // Store tree data for collision detection
+            treeObjects.push({
+                position: new THREE.Vector3(x, tree.position.y, z),
+                radius: 2 // Collision radius
+            });
         }
 
         // Particles (snow)
@@ -744,6 +754,48 @@
                    Math.sin(x * 0.1) * Math.cos(z * 0.1) * 5;
         }
 
+        // Get terrain normal (slope direction) for realistic physics
+        function getTerrainNormal(x, z) {
+            const offset = 0.5;
+            const heightCenter = getTerrainHeight(x, z);
+            const heightRight = getTerrainHeight(x + offset, z);
+            const heightForward = getTerrainHeight(x, z - offset);
+
+            const dx = heightRight - heightCenter;
+            const dz = heightForward - heightCenter;
+
+            const normal = new THREE.Vector3(-dx, offset, -dz);
+            normal.normalize();
+
+            return normal;
+        }
+
+        // Get slope angle in degrees
+        function getSlopeAngle(x, z) {
+            const normal = getTerrainNormal(x, z);
+            const angle = Math.acos(normal.y) * 180 / Math.PI;
+            return angle;
+        }
+
+        // Check collision with trees
+        function checkTreeCollision(position) {
+            for (let tree of treeObjects) {
+                const distance = Math.sqrt(
+                    Math.pow(position.x - tree.position.x, 2) +
+                    Math.pow(position.z - tree.position.z, 2)
+                );
+                if (distance < tree.radius) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Check if skier is within bounds
+        function isWithinBounds(x, z) {
+            return Math.abs(x) < 80 && z > -160 && z < 200;
+        }
+
         // Animation loop
         let lastTime = Date.now();
 
@@ -754,12 +806,29 @@
             const deltaTime = (currentTime - lastTime) / 1000;
             lastTime = currentTime;
 
-            if (gameStarted) {
-                // Increase speed (gravity effect)
-                gameSpeed += 0.3 * deltaTime * 60;
-                gameSpeed = Math.min(gameSpeed, 50);
+            if (gameStarted && !isFalling) {
+                // Physics constants
+                const GRAVITY = 20;
+                const FRICTION = 0.98;
+                const MAX_SPEED = 60;
+                const TURN_SPEED = 2.5;
+                const SLOPE_ACCELERATION = 15;
 
-                // Steering
+                // Get current terrain info
+                const currentHeight = getTerrainHeight(skier.position.x, skier.position.z);
+                const terrainNormal = getTerrainNormal(skier.position.x, skier.position.z);
+                const slopeAngle = getSlopeAngle(skier.position.x, skier.position.z);
+
+                // Calculate slope-based acceleration
+                // The steeper the slope, the faster we go
+                const slopeAcceleration = Math.sin(slopeAngle * Math.PI / 180) * SLOPE_ACCELERATION;
+
+                // Apply gravity and slope physics
+                gameSpeed += slopeAcceleration * deltaTime;
+                gameSpeed *= FRICTION; // Apply friction
+                gameSpeed = Math.max(0, Math.min(gameSpeed, MAX_SPEED));
+
+                // Steering with speed-based turn rate
                 let steerInput = 0;
                 if (touchLeft) steerInput -= 1;
                 if (touchRight) steerInput += 1;
@@ -767,21 +836,88 @@
                     steerInput += skierTilt * 0.5;
                 }
 
-                skierRotation += steerInput * 0.05;
+                // Slower turning at higher speeds (more realistic)
+                const turnRate = TURN_SPEED / (1 + gameSpeed * 0.02);
+                skierRotation += steerInput * turnRate * deltaTime;
                 skier.rotation.y = skierRotation;
 
-                // Move skier forward
+                // Calculate next position
                 const moveSpeed = gameSpeed * deltaTime;
-                skier.position.x += Math.sin(skierRotation) * moveSpeed;
-                skier.position.z -= Math.cos(skierRotation) * moveSpeed;
+                const nextX = skier.position.x + Math.sin(skierRotation) * moveSpeed;
+                const nextZ = skier.position.z - Math.cos(skierRotation) * moveSpeed;
 
-                // Terrain following
-                const terrainHeight = getTerrainHeight(skier.position.x, skier.position.z);
-                skier.position.y = terrainHeight + 2;
+                // Check boundaries
+                if (!isWithinBounds(nextX, nextZ)) {
+                    isFalling = true;
+                    gameStarted = false;
+                    setTimeout(() => {
+                        document.getElementById('final-count').textContent = discoveredWorks.size;
+                        document.getElementById('game-over').querySelector('h2').textContent = '¡FUERA DE PISTA!';
+                        document.getElementById('game-over').style.display = 'block';
+                    }, 1000);
+                }
 
-                // Tilt based on speed and turn
-                skier.rotation.z = -steerInput * 0.3;
-                skier.rotation.x = Math.min(gameSpeed / 100, 0.2);
+                // Check tree collision
+                if (checkTreeCollision(new THREE.Vector3(nextX, 0, nextZ))) {
+                    isFalling = true;
+                    gameSpeed = 0;
+                    gameStarted = false;
+                    setTimeout(() => {
+                        document.getElementById('final-count').textContent = discoveredWorks.size;
+                        document.getElementById('game-over').querySelector('h2').textContent = '¡CHOQUE!';
+                        document.getElementById('game-over').style.display = 'block';
+                    }, 1000);
+                } else {
+                    // Update position
+                    skier.position.x = nextX;
+                    skier.position.z = nextZ;
+                }
+
+                // Realistic terrain following with gravity
+                const targetHeight = currentHeight + 2;
+
+                // Apply gravity
+                velocityY -= GRAVITY * deltaTime;
+                skier.position.y += velocityY * deltaTime;
+
+                // Ground collision
+                if (skier.position.y <= targetHeight) {
+                    skier.position.y = targetHeight;
+                    velocityY = 0;
+                } else {
+                    // In the air - check if landing angle is too steep
+                    if (velocityY < -10) {
+                        isFalling = true;
+                        gameStarted = false;
+                        setTimeout(() => {
+                            document.getElementById('final-count').textContent = discoveredWorks.size;
+                            document.getElementById('game-over').querySelector('h2').textContent = '¡CAÍDA FUERTE!';
+                            document.getElementById('game-over').style.display = 'block';
+                        }, 1000);
+                    }
+                }
+
+                // Calculate terrain slope for skier tilt
+                const forwardHeight = getTerrainHeight(
+                    skier.position.x - Math.sin(skierRotation) * 2,
+                    skier.position.z + Math.cos(skierRotation) * 2
+                );
+                const terrainSlope = (currentHeight - forwardHeight) / 2;
+
+                // Realistic skier rotation based on terrain and movement
+                skier.rotation.z = -steerInput * 0.3 * (gameSpeed / 30); // Lean into turns
+                skier.rotation.x = Math.atan(terrainSlope) * 0.7; // Match terrain slope
+
+                // Check for too steep slopes
+                if (slopeAngle > 50) {
+                    isFalling = true;
+                    gameStarted = false;
+                    setTimeout(() => {
+                        document.getElementById('final-count').textContent = discoveredWorks.size;
+                        document.getElementById('game-over').querySelector('h2').textContent = '¡PENDIENTE MUY PRONUNCIADA!';
+                        document.getElementById('game-over').style.display = 'block';
+                    }, 1000);
+                }
 
                 // Check artwork proximity
                 artworks.forEach(artwork => {
@@ -803,36 +939,70 @@
                 document.getElementById('speed-value').textContent =
                     `${Math.round(gameSpeed)} km/h`;
 
-                // Camera follow
+                // Dynamic camera follow (closer at high speeds, farther at low speeds)
+                const cameraDistance = 15 + (gameSpeed / 4);
+                const cameraHeight = 12 + (gameSpeed / 8);
+
                 const cameraOffset = new THREE.Vector3(
-                    Math.sin(skierRotation + Math.PI) * 15,
-                    12,
-                    Math.cos(skierRotation + Math.PI) * 15
+                    Math.sin(skierRotation + Math.PI) * cameraDistance,
+                    cameraHeight,
+                    Math.cos(skierRotation + Math.PI) * cameraDistance
                 );
 
-                camera.position.x += (skier.position.x + cameraOffset.x - camera.position.x) * 0.1;
-                camera.position.y += (skier.position.y + cameraOffset.y - camera.position.y) * 0.1;
-                camera.position.z += (skier.position.z + cameraOffset.z - camera.position.z) * 0.1;
+                // Smooth camera movement
+                const smoothness = 0.08;
+                camera.position.x += (skier.position.x + cameraOffset.x - camera.position.x) * smoothness;
+                camera.position.y += (skier.position.y + cameraOffset.y - camera.position.y) * smoothness;
+                camera.position.z += (skier.position.z + cameraOffset.z - camera.position.z) * smoothness;
 
-                camera.lookAt(skier.position.x, skier.position.y, skier.position.z);
+                // Look ahead of the skier for better view
+                const lookAheadDistance = 5;
+                const lookAtPoint = new THREE.Vector3(
+                    skier.position.x - Math.sin(skierRotation) * lookAheadDistance,
+                    skier.position.y + 2,
+                    skier.position.z + Math.cos(skierRotation) * lookAheadDistance
+                );
+                camera.lookAt(lookAtPoint);
 
-                // Update particles
+                // Update particles (more intense snow based on speed)
                 const positions = particles.geometry.attributes.position.array;
                 for (let i = 0; i < positions.length; i += 3) {
-                    positions[i + 1] -= gameSpeed * 0.1 * deltaTime;
+                    // Snow falls faster when moving faster (motion blur effect)
+                    positions[i + 1] -= (gameSpeed * 0.15 + 5) * deltaTime;
+                    positions[i + 2] += gameSpeed * 0.05 * deltaTime; // Trail effect
+
                     if (positions[i + 1] < -10) {
                         positions[i + 1] = 100;
                         positions[i] = (Math.random() - 0.5) * 150 + skier.position.x;
-                        positions[i + 2] = (Math.random() - 0.5) * 150 + skier.position.z;
+                        positions[i + 2] = (Math.random() - 0.5) * 100 + skier.position.z - 50;
                     }
                 }
                 particles.geometry.attributes.position.needsUpdate = true;
+
+                // Adjust particle opacity based on speed (more visible when moving fast)
+                particleMaterial.opacity = 0.6 + (gameSpeed / 100) * 0.4;
 
                 // Check if reached bottom
                 if (skier.position.z < -140) {
                     gameStarted = false;
                     document.getElementById('final-count').textContent = discoveredWorks.size;
+                    document.getElementById('game-over').querySelector('h2').textContent = '¡FIN DEL RECORRIDO!';
                     document.getElementById('game-over').style.display = 'block';
+                }
+            }
+
+            // Falling animation
+            if (isFalling) {
+                gameSpeed *= 0.95; // Slow down
+                skier.rotation.x += 0.1; // Tumble forward
+                skier.rotation.z += 0.05; // Tumble sideways
+                velocityY -= 20 * deltaTime; // Keep falling
+                skier.position.y += velocityY * deltaTime;
+
+                // Stop falling after a moment
+                const terrainHeight = getTerrainHeight(skier.position.x, skier.position.z);
+                if (skier.position.y < terrainHeight) {
+                    skier.position.y = terrainHeight;
                 }
             }
 
