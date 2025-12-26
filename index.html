@@ -505,7 +505,7 @@
         fillLight.position.set(-50, 50, -50);
         scene.add(fillLight);
 
-        // Create snow mountain terrain - MUCH BIGGER AND STEEPER
+        // Create snow mountain terrain with CUSTOM GLSL SHADER
         function createSnowMountain() {
             const geometry = new THREE.PlaneGeometry(300, 800, 150, 300);
             const vertices = geometry.attributes.position.array;
@@ -527,123 +527,271 @@
 
             geometry.computeVertexNormals();
 
-            // Realistic snow material with enhanced shader
-            const material = new THREE.MeshStandardMaterial({
-                color: 0xfcfcfc, // Pure white with slight warmth
-                roughness: 0.75,
-                metalness: 0.05, // Tiny bit of metalness for ice crystals
-                envMapIntensity: 0.8,
-                flatShading: false, // Smooth shading for better look
-                emissive: 0xffffff,
-                emissiveIntensity: 0.03, // Subtle glow from snow reflection
-                // Note: displacement would need texture, using geometry instead
+            // CUSTOM GLSL SHADER for realistic snow
+            const snowShader = {
+                uniforms: {
+                    time: { value: 0 },
+                    sunPosition: { value: new THREE.Vector3(100, 200, 100) },
+                    snowColor: { value: new THREE.Color(0xfcfcfc) },
+                    shadowColor: { value: new THREE.Color(0xc8d8f0) }
+                },
+                vertexShader: `
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    varying vec2 vUv;
+                    uniform float time;
+
+                    void main() {
+                        vNormal = normalize(normalMatrix * normal);
+                        vPosition = position;
+                        vUv = uv;
+
+                        // Add subtle wave displacement for snow movement
+                        vec3 pos = position;
+                        pos.z += sin(position.x * 0.1 + time * 0.5) * 0.3;
+                        pos.z += cos(position.y * 0.1 + time * 0.3) * 0.3;
+
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 sunPosition;
+                    uniform vec3 snowColor;
+                    uniform vec3 shadowColor;
+                    uniform float time;
+
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    varying vec2 vUv;
+
+                    // Noise function for sparkle effect
+                    float random(vec2 st) {
+                        return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+                    }
+
+                    void main() {
+                        // Calculate lighting
+                        vec3 lightDir = normalize(sunPosition - vPosition);
+                        float diffuse = max(dot(vNormal, lightDir), 0.0);
+
+                        // Ambient occlusion based on height
+                        float ao = smoothstep(-50.0, 150.0, vPosition.z);
+
+                        // Snow sparkle effect
+                        float sparkle = random(vUv * 100.0 + time * 0.1);
+                        sparkle = step(0.98, sparkle) * 0.5;
+
+                        // Combine colors
+                        vec3 color = mix(shadowColor, snowColor, diffuse * 0.7 + 0.3);
+                        color += sparkle;
+                        color *= ao * 0.3 + 0.7;
+
+                        // Add subtle blue tint in shadows for realism
+                        color = mix(color, shadowColor, (1.0 - diffuse) * 0.2);
+
+                        gl_FragColor = vec4(color, 1.0);
+                    }
+                `
+            };
+
+            const material = new THREE.ShaderMaterial({
+                uniforms: snowShader.uniforms,
+                vertexShader: snowShader.vertexShader,
+                fragmentShader: snowShader.fragmentShader,
+                lights: false
             });
 
             const mountain = new THREE.Mesh(geometry, material);
             mountain.rotation.x = -Math.PI / 2;
             mountain.receiveShadow = true;
             mountain.castShadow = true;
+
+            // Store material for animation
+            mountain.userData.shaderMaterial = material;
+
             return mountain;
         }
 
         const mountain = createSnowMountain();
         scene.add(mountain);
 
-        // Create low-poly skier with METALLIC shader
+        // CUSTOM GLSL SHADER for metallic surfaces
+        function createMetallicShader(baseColor, emissiveColor, metalness) {
+            return {
+                uniforms: {
+                    time: { value: 0 },
+                    baseColor: { value: new THREE.Color(baseColor) },
+                    emissiveColor: { value: new THREE.Color(emissiveColor) },
+                    metalness: { value: metalness },
+                    lightPosition: { value: new THREE.Vector3(100, 200, 100) }
+                },
+                vertexShader: `
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    varying vec3 vViewPosition;
+
+                    void main() {
+                        vNormal = normalize(normalMatrix * normal);
+                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                        vViewPosition = -mvPosition.xyz;
+                        vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 baseColor;
+                    uniform vec3 emissiveColor;
+                    uniform float metalness;
+                    uniform float time;
+                    uniform vec3 lightPosition;
+
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    varying vec3 vViewPosition;
+
+                    void main() {
+                        vec3 normal = normalize(vNormal);
+                        vec3 viewDir = normalize(vViewPosition);
+                        vec3 lightDir = normalize(lightPosition - vPosition);
+
+                        // Diffuse lighting
+                        float diff = max(dot(normal, lightDir), 0.0);
+
+                        // Specular reflection (metallic shine)
+                        vec3 reflectDir = reflect(-lightDir, normal);
+                        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+
+                        // Fresnel effect for metallic look
+                        float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), 3.0);
+
+                        // Combine lighting
+                        vec3 ambient = baseColor * 0.3;
+                        vec3 diffuse = baseColor * diff * 0.6;
+                        vec3 specular = vec3(1.0) * spec * metalness;
+                        vec3 fresnelGlow = baseColor * fresnel * metalness * 0.5;
+
+                        // Add emissive glow
+                        vec3 emissive = emissiveColor * (0.2 + sin(time * 2.0) * 0.1);
+
+                        vec3 color = ambient + diffuse + specular + fresnelGlow + emissive;
+
+                        gl_FragColor = vec4(color, 1.0);
+                    }
+                `
+            };
+        }
+
+        // Create low-poly skier with CUSTOM GLSL METALLIC shader
         function createSkier() {
             const skierGroup = new THREE.Group();
 
-            // Body (main cylinder) - Metallic red suit
+            // Body (main cylinder) - Metallic red suit with GLSL shader
             const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 6);
-            const bodyMaterial = new THREE.MeshStandardMaterial({
-                color: 0xff2244,
-                metalness: 0.7,
-                roughness: 0.2,
-                emissive: 0x330000,
-                emissiveIntensity: 0.2
+            const bodyShader = createMetallicShader(0xff2244, 0x330000, 0.8);
+            const bodyMaterial = new THREE.ShaderMaterial({
+                uniforms: bodyShader.uniforms,
+                vertexShader: bodyShader.vertexShader,
+                fragmentShader: bodyShader.fragmentShader
             });
             const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
             body.castShadow = true;
+            body.userData.shaderMaterial = bodyMaterial;
             skierGroup.add(body);
 
-            // Head (sphere) - Shiny helmet
+            // Head (sphere) - Shiny helmet with GLSL shader
             const headGeometry = new THREE.SphereGeometry(0.4, 8, 8);
-            const headMaterial = new THREE.MeshStandardMaterial({
-                color: 0xffcc00,
-                metalness: 0.9,
-                roughness: 0.1,
-                emissive: 0x332200,
-                emissiveIntensity: 0.3
+            const headShader = createMetallicShader(0xffcc00, 0x332200, 0.95);
+            const headMaterial = new THREE.ShaderMaterial({
+                uniforms: headShader.uniforms,
+                vertexShader: headShader.vertexShader,
+                fragmentShader: headShader.fragmentShader
             });
             const head = new THREE.Mesh(headGeometry, headMaterial);
             head.position.y = 1.2;
             head.castShadow = true;
+            head.userData.shaderMaterial = headMaterial;
             skierGroup.add(head);
 
-            // Arms - Metallic
+            // Arms - Metallic with GLSL shader
             const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 4);
-            const armMaterial = new THREE.MeshStandardMaterial({
-                color: 0xff2244,
-                metalness: 0.7,
-                roughness: 0.2,
-                emissive: 0x330000,
-                emissiveIntensity: 0.2
+            const armShader = createMetallicShader(0xff2244, 0x330000, 0.8);
+            const armMaterial = new THREE.ShaderMaterial({
+                uniforms: armShader.uniforms,
+                vertexShader: armShader.vertexShader,
+                fragmentShader: armShader.fragmentShader
             });
 
             const leftArm = new THREE.Mesh(armGeometry, armMaterial);
             leftArm.position.set(-0.5, 0.3, 0);
             leftArm.rotation.z = Math.PI / 4;
             leftArm.castShadow = true;
+            leftArm.userData.shaderMaterial = armMaterial;
             skierGroup.add(leftArm);
 
             const rightArm = new THREE.Mesh(armGeometry, armMaterial);
             rightArm.position.set(0.5, 0.3, 0);
             rightArm.rotation.z = -Math.PI / 4;
             rightArm.castShadow = true;
+            rightArm.userData.shaderMaterial = armMaterial;
             skierGroup.add(rightArm);
 
-            // Skis - Shiny metallic blue
+            // Skis - Shiny metallic blue with GLSL shader
             const skiGeometry = new THREE.BoxGeometry(0.15, 0.1, 2);
-            const skiMaterial = new THREE.MeshStandardMaterial({
-                color: 0x00d4ff,
-                metalness: 0.9,
-                roughness: 0.1,
-                emissive: 0x003344,
-                emissiveIntensity: 0.3
+            const skiShader = createMetallicShader(0x00d4ff, 0x003344, 0.95);
+            const skiMaterial = new THREE.ShaderMaterial({
+                uniforms: skiShader.uniforms,
+                vertexShader: skiShader.vertexShader,
+                fragmentShader: skiShader.fragmentShader
             });
 
             const leftSki = new THREE.Mesh(skiGeometry, skiMaterial);
             leftSki.position.set(-0.25, -1, 0.3);
             leftSki.castShadow = true;
+            leftSki.userData.shaderMaterial = skiMaterial;
             skierGroup.add(leftSki);
 
             const rightSki = new THREE.Mesh(skiGeometry, skiMaterial);
             rightSki.position.set(0.25, -1, 0.3);
             rightSki.castShadow = true;
+            rightSki.userData.shaderMaterial = skiMaterial;
             skierGroup.add(rightSki);
 
-            // Ski poles - Metallic chrome
+            // Ski poles - Metallic chrome with GLSL shader
             const poleGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1.5, 6);
-            const poleMaterial = new THREE.MeshStandardMaterial({
-                color: 0x888888,
-                metalness: 0.95,
-                roughness: 0.05
+            const poleShader = createMetallicShader(0xcccccc, 0x333333, 0.98);
+            const poleMaterial = new THREE.ShaderMaterial({
+                uniforms: poleShader.uniforms,
+                vertexShader: poleShader.vertexShader,
+                fragmentShader: poleShader.fragmentShader
             });
 
             const leftPole = new THREE.Mesh(poleGeometry, poleMaterial);
             leftPole.position.set(-0.7, -0.2, 0.5);
             leftPole.rotation.x = Math.PI / 6;
             leftPole.castShadow = true;
+            leftPole.userData.shaderMaterial = poleMaterial;
             skierGroup.add(leftPole);
 
             const rightPole = new THREE.Mesh(poleGeometry, poleMaterial);
             rightPole.position.set(0.7, -0.2, 0.5);
             rightPole.rotation.x = Math.PI / 6;
             rightPole.castShadow = true;
+            rightPole.userData.shaderMaterial = poleMaterial;
             skierGroup.add(rightPole);
 
             // Position will be set after terrain is created
             skierGroup.position.set(0, 0, 0);
+
+            // Store all shader materials for animation
+            skierGroup.userData.shaderMaterials = [
+                bodyMaterial,
+                headMaterial,
+                armMaterial,
+                skiMaterial,
+                poleMaterial
+            ];
+
             return skierGroup;
         }
 
@@ -1135,6 +1283,23 @@
                 if (skier.position.y < terrainHeight) {
                     skier.position.y = terrainHeight;
                 }
+            }
+
+            // UPDATE SHADER UNIFORMS - Animate all GLSL shaders
+            const time = currentTime * 0.001; // Convert to seconds
+
+            // Update mountain snow shader
+            if (mountain.userData.shaderMaterial) {
+                mountain.userData.shaderMaterial.uniforms.time.value = time;
+            }
+
+            // Update skier metallic shaders
+            if (skier.userData.shaderMaterials) {
+                skier.userData.shaderMaterials.forEach(material => {
+                    if (material && material.uniforms && material.uniforms.time) {
+                        material.uniforms.time.value = time;
+                    }
+                });
             }
 
             renderer.render(scene, camera);
