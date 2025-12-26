@@ -442,7 +442,12 @@
 
         // Scene setup
         const scene = new THREE.Scene();
-        scene.fog = new THREE.Fog(0xe0f7ff, 100, 500); // Extended fog for bigger mountain
+
+        // Realistic fog (atmospheric perspective)
+        scene.fog = new THREE.FogExp2(0xC9E4F7, 0.0012); // Exponential fog for more realism
+
+        // Sky background gradient
+        scene.background = new THREE.Color(0x87CEEB); // Sky blue
 
         const camera = new THREE.PerspectiveCamera(
             60,
@@ -451,18 +456,37 @@
             1000
         );
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true
+        });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // Realistic rendering settings
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        // Realistic Sky Lighting
+        // Hemisphere light simulates sky and ground reflection
+        const hemisphereLight = new THREE.HemisphereLight(
+            0x87CEEB, // Sky color (light blue)
+            0xffffff, // Ground color (white snow reflection)
+            0.6
+        );
+        scene.add(hemisphereLight);
+
+        // Ambient light for overall scene brightness
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
         scene.add(ambientLight);
 
-        const sunLight = new THREE.DirectionalLight(0xffffee, 1.2);
+        // Sun light - main directional light
+        const sunLight = new THREE.DirectionalLight(0xFFF8DC, 1.5); // Warm sunlight
         sunLight.position.set(100, 200, 100);
         sunLight.castShadow = true;
         sunLight.shadow.mapSize.width = 2048;
@@ -471,7 +495,13 @@
         sunLight.shadow.camera.right = 200;
         sunLight.shadow.camera.top = 200;
         sunLight.shadow.camera.bottom = -200;
+        sunLight.shadow.bias = -0.0001;
         scene.add(sunLight);
+
+        // Fill light to soften shadows (from opposite side)
+        const fillLight = new THREE.DirectionalLight(0xB0E0E6, 0.3); // Pale blue
+        fillLight.position.set(-50, 50, -50);
+        scene.add(fillLight);
 
         // Create snow mountain terrain - MUCH BIGGER AND STEEPER
         function createSnowMountain() {
@@ -495,10 +525,13 @@
 
             geometry.computeVertexNormals();
 
+            // Realistic snow material
             const material = new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                roughness: 0.9,
+                color: 0xfafafa, // Slightly off-white for more realism
+                roughness: 0.85,
                 metalness: 0.0,
+                envMapIntensity: 0.5,
+                flatShading: false, // Smooth shading for better look
             });
 
             const mountain = new THREE.Mesh(geometry, material);
@@ -576,13 +609,17 @@
             rightPole.castShadow = true;
             skierGroup.add(rightPole);
 
-            // Start position will be set after terrain is created
-            skierGroup.position.set(0, 250, 200);
+            // Position will be set after terrain is created
+            skierGroup.position.set(0, 0, 0);
             return skierGroup;
         }
 
         const skier = createSkier();
         scene.add(skier);
+
+        // Initial position - will be set properly after getTerrainHeight is defined
+        const startX = 0;
+        const startZ = 200;
 
         // Create artwork displays (low-poly frames) - UPDATED for bigger mountain
         const artworks = [];
@@ -634,15 +671,23 @@
         function createTree(x, z) {
             const treeGroup = new THREE.Group();
 
-            // Trunk
+            // Trunk with realistic material
             const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.5, 3, 6);
-            const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x4a3728 });
+            const trunkMaterial = new THREE.MeshStandardMaterial({
+                color: 0x4a3728,
+                roughness: 0.9,
+                metalness: 0.0
+            });
             const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
             trunk.castShadow = true;
             treeGroup.add(trunk);
 
-            // Foliage layers
-            const foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x1a4d2e });
+            // Foliage layers with realistic pine green
+            const foliageMaterial = new THREE.MeshStandardMaterial({
+                color: 0x1a5d2e,
+                roughness: 0.9,
+                metalness: 0.0
+            });
 
             for (let i = 0; i < 3; i++) {
                 const foliageGeometry = new THREE.ConeGeometry(1.5 - i * 0.3, 2, 6);
@@ -700,10 +745,6 @@
         const particles = new THREE.Points(particleGeometry, particleMaterial);
         scene.add(particles);
 
-        // Camera setup (UPDATED for bigger mountain)
-        camera.position.set(0, 260, 215);
-        camera.lookAt(skier.position);
-
         // Touch controls
         document.getElementById('left-zone').addEventListener('touchstart', (e) => {
             e.preventDefault();
@@ -760,6 +801,15 @@
                    Math.sin(x * 0.15) * Math.cos(z * 0.12) * 5 +
                    Math.sin(x * 0.08) * Math.cos(z * 0.08) * 8;
         }
+
+        // NOW set skier initial position properly on terrain
+        const startHeight = getTerrainHeight(startX, startZ);
+        skier.position.set(startX, startHeight + 2, startZ);
+
+        // Camera setup - positioned behind skier at start
+        const initialCameraHeight = startHeight + 12;
+        camera.position.set(0, initialCameraHeight, startZ + 15);
+        camera.lookAt(skier.position);
 
         // Get terrain normal (slope direction) for realistic physics
         function getTerrainNormal(x, z) {
