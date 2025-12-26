@@ -2,24 +2,20 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Abel Coello - Portfolio 3D Ski</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abel Coello - Portfolio 3D</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
         }
 
         body {
             font-family: 'Arial', sans-serif;
-            overflow: hidden;
-            background: #1a1a2e;
+            overflow-x: hidden;
+            background: #0a0a0a;
             color: #fff;
-            touch-action: none;
         }
 
         #canvas-container {
@@ -28,173 +24,79 @@
             left: 0;
             width: 100%;
             height: 100vh;
+            z-index: 1;
+        }
+
+        #scroll-content {
+            position: relative;
+            z-index: 10;
+            height: 500vh; /* Allows scrolling */
+            pointer-events: none;
         }
 
         #ui-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
+            top: 20px;
+            left: 20px;
             z-index: 100;
+            pointer-events: none;
         }
 
         #title {
-            position: absolute;
-            top: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            text-align: center;
-            pointer-events: all;
-        }
-
-        #title h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            background: linear-gradient(45deg, #fff, #00d4ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
-        }
-
-        #title p {
             font-size: 1.2rem;
-            color: #00d4ff;
+            color: rgba(255, 255, 255, 0.8);
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         }
 
-        #controls-info {
-            position: absolute;
+        #instructions {
+            position: fixed;
             bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.7);
-            padding: 20px 40px;
-            border-radius: 15px;
-            border: 2px solid #00d4ff;
+            padding: 15px 30px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
             text-align: center;
+            z-index: 100;
+            pointer-events: none;
+            transition: opacity 0.5s;
         }
 
-        #controls-info h3 {
-            color: #00d4ff;
-            margin-bottom: 10px;
+        #instructions.hide {
+            opacity: 0;
         }
 
-        #speed-meter {
-            position: absolute;
-            top: 120px;
-            right: 30px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px 25px;
-            border-radius: 10px;
-            border: 2px solid #00d4ff;
-        }
-
-        #speed-meter h4 {
-            color: #00d4ff;
-            font-size: 0.9rem;
-            margin-bottom: 5px;
-        }
-
-        #speed-value {
-            font-size: 2rem;
-            font-weight: bold;
-        }
-
-        #works-counter {
-            position: absolute;
-            top: 120px;
-            left: 30px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px 25px;
-            border-radius: 10px;
-            border: 2px solid #ffd700;
-        }
-
-        #works-counter h4 {
-            color: #ffd700;
-            font-size: 0.9rem;
-            margin-bottom: 5px;
-        }
-
-        #works-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #ffd700;
-        }
-
-        .popup-overlay {
+        .info-panel {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
+            right: -400px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 350px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 30px;
+            border-radius: 15px 0 0 15px;
+            border: 2px solid #00d4ff;
+            border-right: none;
+            z-index: 100;
+            transition: right 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             pointer-events: all;
-            animation: fadeIn 0.3s;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+        .info-panel.active {
+            right: 0;
         }
 
-        .popup-content {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            padding: 40px;
-            border-radius: 20px;
-            max-width: 600px;
-            width: 90%;
-            border: 3px solid #00d4ff;
-            box-shadow: 0 0 50px rgba(0, 212, 255, 0.5);
-            transform: scale(0.9);
-            animation: popIn 0.3s forwards;
-        }
-
-        @keyframes popIn {
-            to { transform: scale(1); }
-        }
-
-        .popup-content h2 {
+        .info-panel h2 {
             color: #00d4ff;
-            margin-bottom: 20px;
-            font-size: 2rem;
-        }
-
-        .popup-content p {
-            line-height: 1.8;
             margin-bottom: 15px;
-            font-size: 1.1rem;
+            font-size: 1.8rem;
         }
 
-        .popup-image {
-            width: 100%;
-            height: 250px;
-            border-radius: 10px;
-            margin: 20px 0;
-            object-fit: cover;
-        }
-
-        .close-popup {
-            background: #00d4ff;
-            color: #000;
-            border: none;
-            padding: 15px 40px;
-            border-radius: 50px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 20px;
-            transition: all 0.3s;
-        }
-
-        .close-popup:hover {
-            background: #00f;
-            transform: scale(1.05);
+        .info-panel p {
+            line-height: 1.6;
+            margin-bottom: 10px;
+            color: rgba(255, 255, 255, 0.9);
         }
 
         #loading {
@@ -203,23 +105,23 @@
             left: 0;
             width: 100%;
             height: 100vh;
-            background: #1a1a2e;
+            background: #0a0a0a;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 9999;
+            transition: opacity 0.5s;
         }
 
-        #loading h2 {
-            font-size: 2rem;
-            color: #00d4ff;
-            margin-bottom: 20px;
+        #loading.fade-out {
+            opacity: 0;
+            pointer-events: none;
         }
 
         .loader {
-            border: 5px solid #333;
-            border-top: 5px solid #00d4ff;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #00d4ff;
             border-radius: 50%;
             width: 60px;
             height: 60px;
@@ -230,1078 +132,415 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-        #start-button {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(45deg, #00d4ff, #0080ff);
-            color: #fff;
-            border: none;
-            padding: 25px 60px;
-            border-radius: 50px;
-            font-size: 1.8rem;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 10000;
-            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.5);
-            transition: all 0.3s;
-            pointer-events: all;
-        }
-
-        #start-button:hover {
-            transform: translate(-50%, -50%) scale(1.1);
-        }
-
-        #game-over {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.95);
-            padding: 50px;
-            border-radius: 20px;
-            border: 3px solid #00d4ff;
-            text-align: center;
-            z-index: 10001;
-            pointer-events: all;
-        }
-
-        #game-over h2 {
-            font-size: 2.5rem;
-            color: #00d4ff;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        #game-over p {
-            font-size: 1.5rem;
-            margin-bottom: 30px;
-        }
-
-        .restart-button {
-            background: #00d4ff;
-            color: #000;
-            border: none;
-            padding: 20px 50px;
-            border-radius: 50px;
-            font-size: 1.3rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .restart-button:hover {
-            background: #00f;
-            transform: scale(1.05);
-        }
-
-        .joystick-zone {
-            position: fixed;
-            bottom: 0;
-            width: 50%;
-            height: 40%;
-            pointer-events: all;
-            z-index: 99;
-        }
-
-        #left-zone {
-            left: 0;
-        }
-
-        #right-zone {
-            right: 0;
-        }
     </style>
 </head>
 <body>
     <div id="loading">
-        <h2>Cargando Aventura 3D...</h2>
+        <h2 style="color: #00d4ff; margin-bottom: 20px;">Cargando Portfolio 3D...</h2>
         <div class="loader"></div>
     </div>
 
-    <button id="start-button">¡COMENZAR!</button>
-
     <div id="canvas-container"></div>
+    <div id="scroll-content"></div>
 
     <div id="ui-overlay">
-        <div id="title">
-            <h1>ABEL COELLO</h1>
-            <p>Portfolio Interactivo 3D</p>
-        </div>
-
-        <div id="controls-info">
-            <h3>🎮 CONTROLES</h3>
-            <p>← → o A/D para girar</p>
-            <p>También táctil e inclinación</p>
-        </div>
-
-        <div id="speed-meter">
-            <h4>VELOCIDAD</h4>
-            <div id="speed-value">0 km/h</div>
-        </div>
-
-        <div id="works-counter">
-            <h4>OBRAS DESCUBIERTAS</h4>
-            <div id="works-value">0 / 6</div>
-        </div>
+        <div id="title">Abel Coello - Portfolio 3D</div>
     </div>
 
-    <div class="joystick-zone" id="left-zone"></div>
-    <div class="joystick-zone" id="right-zone"></div>
-
-    <div id="game-over">
-        <h2>¡FIN DEL RECORRIDO!</h2>
-        <p>Has descubierto <span id="final-count">0</span> obras</p>
-        <button class="restart-button" onclick="location.reload()">VOLVER A INTENTAR</button>
+    <div id="instructions">
+        <p>🖱️ Arrastra para orbitar • 📜 Scroll para explorar</p>
     </div>
 
-    <!-- Popups para cada obra -->
-    <div class="popup-overlay" id="popup-1">
-        <div class="popup-content">
-            <h2>🎨 Proyecto Arquitectónico</h2>
-            <div style="width: 100%; height: 250px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px;"></div>
-            <p>Modelado arquitectónico fotorrealista con iluminación volumétrica y texturas procedurales de alta calidad.</p>
-            <p><strong>Software:</strong> Blender, Cycles Render</p>
-            <p><strong>Año:</strong> 2024</p>
-            <button class="close-popup" onclick="closePopup('popup-1')">CONTINUAR EXPLORANDO</button>
-        </div>
-    </div>
-
-    <div class="popup-overlay" id="popup-2">
-        <div class="popup-content">
-            <h2>👤 Diseño de Personajes</h2>
-            <div style="width: 100%; height: 250px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 10px;"></div>
-            <p>Creación de personajes estilizados con rigging completo y animaciones cinemáticas.</p>
-            <p><strong>Software:</strong> Maya, Substance Painter</p>
-            <p><strong>Año:</strong> 2024</p>
-            <button class="close-popup" onclick="closePopup('popup-2')">CONTINUAR EXPLORANDO</button>
-        </div>
-    </div>
-
-    <div class="popup-overlay" id="popup-3">
-        <div class="popup-content">
-            <h2>🌍 Entornos Fotorrealistas</h2>
-            <div style="width: 100%; height: 250px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 10px;"></div>
-            <p>Construcción de entornos naturales con vegetación procedural y sistema de iluminación global.</p>
-            <p><strong>Software:</strong> Blender, Octane Render</p>
-            <p><strong>Año:</strong> 2023</p>
-            <button class="close-popup" onclick="closePopup('popup-3')">CONTINUAR EXPLORANDO</button>
-        </div>
-    </div>
-
-    <div class="popup-overlay" id="popup-4">
-        <div class="popup-content">
-            <h2>✨ Motion Graphics</h2>
-            <div style="width: 100%; height: 250px; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 10px;"></div>
-            <p>Animaciones abstractas y efectos visuales para contenido publicitario y redes sociales.</p>
-            <p><strong>Software:</strong> Cinema 4D, After Effects</p>
-            <p><strong>Año:</strong> 2024</p>
-            <button class="close-popup" onclick="closePopup('popup-4')">CONTINUAR EXPLORANDO</button>
-        </div>
-    </div>
-
-    <div class="popup-overlay" id="popup-5">
-        <div class="popup-content">
-            <h2>🏙️ Visualización Urbana</h2>
-            <div style="width: 100%; height: 250px; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-radius: 10px;"></div>
-            <p>Renders arquitectónicos para proyectos urbanos con integración fotográfica realista.</p>
-            <p><strong>Software:</strong> 3ds Max, V-Ray</p>
-            <p><strong>Año:</strong> 2023</p>
-            <button class="close-popup" onclick="closePopup('popup-5')">CONTINUAR EXPLORANDO</button>
-        </div>
-    </div>
-
-    <div class="popup-overlay" id="popup-6">
-        <div class="popup-content">
-            <h2>🎬 Producción Audiovisual</h2>
-            <div style="width: 100%; height: 250px; background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); border-radius: 10px;"></div>
-            <p>Efectos especiales y composición digital para cortometrajes y producciones comerciales.</p>
-            <p><strong>Software:</strong> Houdini, Nuke</p>
-            <p><strong>Año:</strong> 2024</p>
-            <button class="close-popup" onclick="closePopup('popup-6')">CONTINUAR EXPLORANDO</button>
-        </div>
+    <div class="info-panel" id="info-panel">
+        <h2>Bienvenido</h2>
+        <p>Explora mi portfolio navegando hacia abajo.</p>
+        <p>Descubre proyectos y trabajos mientras desciendes por el árbol.</p>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script>
-        // Game state
-        let gameStarted = false;
-        let gameSpeed = 0;
-        let velocityY = 0; // Vertical velocity for gravity
-        let skierRotation = 0;
-        let skierTilt = 0;
-        let discoveredWorks = new Set();
-        let touchLeft = false;
-        let touchRight = false;
-        let keyLeft = false; // Keyboard controls
-        let keyRight = false;
-        let gyroEnabled = false;
-        let isFalling = false;
-        let treeObjects = []; // Store tree positions for collision detection
-
         // Scene setup
         const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a0a);
+        scene.fog = new THREE.FogExp2(0x0a0a0a, 0.015);
 
-        // Realistic fog (atmospheric perspective)
-        scene.fog = new THREE.FogExp2(0xC9E4F7, 0.0012); // Exponential fog for more realism
-
-        // Sky background gradient
-        scene.background = new THREE.Color(0x87CEEB); // Sky blue
-
+        // Camera
         const camera = new THREE.PerspectiveCamera(
-            60,
+            75,
             window.innerWidth / window.innerHeight,
             0.1,
             1000
         );
+        camera.position.set(8, 10, 8);
 
+        // Renderer with high quality settings
         const renderer = new THREE.WebGLRenderer({
             antialias: true,
-            alpha: true
+            alpha: true,
+            powerPreference: "high-performance"
         });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-        // Realistic rendering settings
         renderer.outputEncoding = THREE.sRGBEncoding;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.2;
-
+        renderer.toneMappingExposure = 1.3;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-        // Realistic Sky Lighting
-        // Hemisphere light simulates sky and ground reflection
+        // OrbitControls with limits
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enableZoom = true;
+        controls.minDistance = 5;
+        controls.maxDistance = 25;
+        controls.maxPolarAngle = Math.PI / 1.8;
+        controls.minPolarAngle = Math.PI / 4;
+        controls.enablePan = false;
+
+        // Lighting setup
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
         const hemisphereLight = new THREE.HemisphereLight(
-            0x87CEEB, // Sky color (light blue)
-            0xffffff, // Ground color (white snow reflection)
+            0x87CEEB,
+            0x2c1810,
             0.6
         );
         scene.add(hemisphereLight);
 
-        // Ambient light for overall scene brightness
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-        scene.add(ambientLight);
+        const mainLight = new THREE.DirectionalLight(0xfff4e6, 1.2);
+        mainLight.position.set(10, 20, 10);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.width = 2048;
+        mainLight.shadow.mapSize.height = 2048;
+        mainLight.shadow.camera.near = 0.1;
+        mainLight.shadow.camera.far = 50;
+        mainLight.shadow.camera.left = -20;
+        mainLight.shadow.camera.right = 20;
+        mainLight.shadow.camera.top = 20;
+        mainLight.shadow.camera.bottom = -20;
+        mainLight.shadow.bias = -0.001;
+        scene.add(mainLight);
 
-        // Sun light - main directional light
-        const sunLight = new THREE.DirectionalLight(0xFFF8DC, 1.5); // Warm sunlight
-        sunLight.position.set(100, 200, 100);
-        sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 2048;
-        sunLight.shadow.mapSize.height = 2048;
-        sunLight.shadow.camera.left = -200;
-        sunLight.shadow.camera.right = 200;
-        sunLight.shadow.camera.top = 200;
-        sunLight.shadow.camera.bottom = -200;
-        sunLight.shadow.bias = -0.0001;
-        scene.add(sunLight);
-
-        // Fill light to soften shadows (from opposite side)
-        const fillLight = new THREE.DirectionalLight(0xB0E0E6, 0.3); // Pale blue
-        fillLight.position.set(-50, 50, -50);
+        const fillLight = new THREE.DirectionalLight(0x4a90e2, 0.4);
+        fillLight.position.set(-5, 5, -5);
         scene.add(fillLight);
 
-        // Create snow mountain terrain with CUSTOM GLSL SHADER
-        function createSnowMountain() {
-            const geometry = new THREE.PlaneGeometry(300, 800, 150, 300);
-            const vertices = geometry.attributes.position.array;
-
-            for (let i = 0; i < vertices.length; i += 3) {
-                const x = vertices[i];
-                const y = vertices[i + 1];
-
-                // Create steeper slope going downhill (0.6 instead of 0.3 for more slope)
-                let height = (y + 400) * 0.6;
-
-                // Add bumps and moguls (more pronounced)
-                height += Math.sin(x * 0.15) * Math.cos(y * 0.12) * 5;
-                height += Math.sin(x * 0.08) * Math.cos(y * 0.08) * 8;
-                height += (Math.random() - 0.5) * 2;
-
-                vertices[i + 2] = height;
-            }
-
-            geometry.computeVertexNormals();
-
-            // CUSTOM GLSL SHADER for realistic snow
-            const snowShader = {
-                uniforms: {
-                    time: { value: 0 },
-                    sunPosition: { value: new THREE.Vector3(100, 200, 100) },
-                    snowColor: { value: new THREE.Color(0xfcfcfc) },
-                    shadowColor: { value: new THREE.Color(0xc8d8f0) }
-                },
-                vertexShader: `
-                    varying vec3 vNormal;
-                    varying vec3 vPosition;
-                    varying vec2 vUv;
-                    uniform float time;
-
-                    void main() {
-                        vNormal = normalize(normalMatrix * normal);
-                        vPosition = position;
-                        vUv = uv;
-
-                        // Add subtle wave displacement for snow movement
-                        vec3 pos = position;
-                        pos.z += sin(position.x * 0.1 + time * 0.5) * 0.3;
-                        pos.z += cos(position.y * 0.1 + time * 0.3) * 0.3;
-
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    uniform vec3 sunPosition;
-                    uniform vec3 snowColor;
-                    uniform vec3 shadowColor;
-                    uniform float time;
-
-                    varying vec3 vNormal;
-                    varying vec3 vPosition;
-                    varying vec2 vUv;
-
-                    // Noise function for sparkle effect
-                    float random(vec2 st) {
-                        return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
-                    }
-
-                    void main() {
-                        // Calculate lighting
-                        vec3 lightDir = normalize(sunPosition - vPosition);
-                        float diffuse = max(dot(vNormal, lightDir), 0.0);
-
-                        // Ambient occlusion based on height
-                        float ao = smoothstep(-50.0, 150.0, vPosition.z);
-
-                        // Snow sparkle effect
-                        float sparkle = random(vUv * 100.0 + time * 0.1);
-                        sparkle = step(0.98, sparkle) * 0.5;
-
-                        // Combine colors
-                        vec3 color = mix(shadowColor, snowColor, diffuse * 0.7 + 0.3);
-                        color += sparkle;
-                        color *= ao * 0.3 + 0.7;
-
-                        // Add subtle blue tint in shadows for realism
-                        color = mix(color, shadowColor, (1.0 - diffuse) * 0.2);
-
-                        gl_FragColor = vec4(color, 1.0);
-                    }
-                `
-            };
-
-            const material = new THREE.ShaderMaterial({
-                uniforms: snowShader.uniforms,
-                vertexShader: snowShader.vertexShader,
-                fragmentShader: snowShader.fragmentShader,
-                lights: false
-            });
-
-            const mountain = new THREE.Mesh(geometry, material);
-            mountain.rotation.x = -Math.PI / 2;
-            mountain.receiveShadow = true;
-            mountain.castShadow = true;
-
-            // Store material for animation
-            mountain.userData.shaderMaterial = material;
-
-            return mountain;
-        }
-
-        const mountain = createSnowMountain();
-        scene.add(mountain);
-
-        // CUSTOM GLSL SHADER for metallic surfaces
-        function createMetallicShader(baseColor, emissiveColor, metalness) {
-            return {
-                uniforms: {
-                    time: { value: 0 },
-                    baseColor: { value: new THREE.Color(baseColor) },
-                    emissiveColor: { value: new THREE.Color(emissiveColor) },
-                    metalness: { value: metalness },
-                    lightPosition: { value: new THREE.Vector3(100, 200, 100) }
-                },
-                vertexShader: `
-                    varying vec3 vNormal;
-                    varying vec3 vPosition;
-                    varying vec3 vViewPosition;
-
-                    void main() {
-                        vNormal = normalize(normalMatrix * normal);
-                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-                        vViewPosition = -mvPosition.xyz;
-                        vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
-
-                        gl_Position = projectionMatrix * mvPosition;
-                    }
-                `,
-                fragmentShader: `
-                    uniform vec3 baseColor;
-                    uniform vec3 emissiveColor;
-                    uniform float metalness;
-                    uniform float time;
-                    uniform vec3 lightPosition;
-
-                    varying vec3 vNormal;
-                    varying vec3 vPosition;
-                    varying vec3 vViewPosition;
-
-                    void main() {
-                        vec3 normal = normalize(vNormal);
-                        vec3 viewDir = normalize(vViewPosition);
-                        vec3 lightDir = normalize(lightPosition - vPosition);
-
-                        // Diffuse lighting
-                        float diff = max(dot(normal, lightDir), 0.0);
-
-                        // Specular reflection (metallic shine)
-                        vec3 reflectDir = reflect(-lightDir, normal);
-                        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-
-                        // Fresnel effect for metallic look
-                        float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), 3.0);
-
-                        // Combine lighting
-                        vec3 ambient = baseColor * 0.3;
-                        vec3 diffuse = baseColor * diff * 0.6;
-                        vec3 specular = vec3(1.0) * spec * metalness;
-                        vec3 fresnelGlow = baseColor * fresnel * metalness * 0.5;
-
-                        // Add emissive glow
-                        vec3 emissive = emissiveColor * (0.2 + sin(time * 2.0) * 0.1);
-
-                        vec3 color = ambient + diffuse + specular + fresnelGlow + emissive;
-
-                        gl_FragColor = vec4(color, 1.0);
-                    }
-                `
-            };
-        }
-
-        // Create low-poly skier with CUSTOM GLSL METALLIC shader
-        function createSkier() {
-            const skierGroup = new THREE.Group();
-
-            // Body (main cylinder) - Metallic red suit with GLSL shader
-            const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 6);
-            const bodyShader = createMetallicShader(0xff2244, 0x330000, 0.8);
-            const bodyMaterial = new THREE.ShaderMaterial({
-                uniforms: bodyShader.uniforms,
-                vertexShader: bodyShader.vertexShader,
-                fragmentShader: bodyShader.fragmentShader
-            });
-            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-            body.castShadow = true;
-            body.userData.shaderMaterial = bodyMaterial;
-            skierGroup.add(body);
-
-            // Head (sphere) - Shiny helmet with GLSL shader
-            const headGeometry = new THREE.SphereGeometry(0.4, 8, 8);
-            const headShader = createMetallicShader(0xffcc00, 0x332200, 0.95);
-            const headMaterial = new THREE.ShaderMaterial({
-                uniforms: headShader.uniforms,
-                vertexShader: headShader.vertexShader,
-                fragmentShader: headShader.fragmentShader
-            });
-            const head = new THREE.Mesh(headGeometry, headMaterial);
-            head.position.y = 1.2;
-            head.castShadow = true;
-            head.userData.shaderMaterial = headMaterial;
-            skierGroup.add(head);
-
-            // Arms - Metallic with GLSL shader
-            const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 4);
-            const armShader = createMetallicShader(0xff2244, 0x330000, 0.8);
-            const armMaterial = new THREE.ShaderMaterial({
-                uniforms: armShader.uniforms,
-                vertexShader: armShader.vertexShader,
-                fragmentShader: armShader.fragmentShader
-            });
-
-            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-            leftArm.position.set(-0.5, 0.3, 0);
-            leftArm.rotation.z = Math.PI / 4;
-            leftArm.castShadow = true;
-            leftArm.userData.shaderMaterial = armMaterial;
-            skierGroup.add(leftArm);
-
-            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
-            rightArm.position.set(0.5, 0.3, 0);
-            rightArm.rotation.z = -Math.PI / 4;
-            rightArm.castShadow = true;
-            rightArm.userData.shaderMaterial = armMaterial;
-            skierGroup.add(rightArm);
-
-            // Skis - Shiny metallic blue with GLSL shader
-            const skiGeometry = new THREE.BoxGeometry(0.15, 0.1, 2);
-            const skiShader = createMetallicShader(0x00d4ff, 0x003344, 0.95);
-            const skiMaterial = new THREE.ShaderMaterial({
-                uniforms: skiShader.uniforms,
-                vertexShader: skiShader.vertexShader,
-                fragmentShader: skiShader.fragmentShader
-            });
-
-            const leftSki = new THREE.Mesh(skiGeometry, skiMaterial);
-            leftSki.position.set(-0.25, -1, 0.3);
-            leftSki.castShadow = true;
-            leftSki.userData.shaderMaterial = skiMaterial;
-            skierGroup.add(leftSki);
-
-            const rightSki = new THREE.Mesh(skiGeometry, skiMaterial);
-            rightSki.position.set(0.25, -1, 0.3);
-            rightSki.castShadow = true;
-            rightSki.userData.shaderMaterial = skiMaterial;
-            skierGroup.add(rightSki);
-
-            // Ski poles - Metallic chrome with GLSL shader
-            const poleGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1.5, 6);
-            const poleShader = createMetallicShader(0xcccccc, 0x333333, 0.98);
-            const poleMaterial = new THREE.ShaderMaterial({
-                uniforms: poleShader.uniforms,
-                vertexShader: poleShader.vertexShader,
-                fragmentShader: poleShader.fragmentShader
-            });
-
-            const leftPole = new THREE.Mesh(poleGeometry, poleMaterial);
-            leftPole.position.set(-0.7, -0.2, 0.5);
-            leftPole.rotation.x = Math.PI / 6;
-            leftPole.castShadow = true;
-            leftPole.userData.shaderMaterial = poleMaterial;
-            skierGroup.add(leftPole);
-
-            const rightPole = new THREE.Mesh(poleGeometry, poleMaterial);
-            rightPole.position.set(0.7, -0.2, 0.5);
-            rightPole.rotation.x = Math.PI / 6;
-            rightPole.castShadow = true;
-            rightPole.userData.shaderMaterial = poleMaterial;
-            skierGroup.add(rightPole);
-
-            // Position will be set after terrain is created
-            skierGroup.position.set(0, 0, 0);
-
-            // Store all shader materials for animation
-            skierGroup.userData.shaderMaterials = [
-                bodyMaterial,
-                headMaterial,
-                armMaterial,
-                skiMaterial,
-                poleMaterial
-            ];
-
-            return skierGroup;
-        }
-
-        const skier = createSkier();
-        scene.add(skier);
-
-        // Initial position - START MUCH CLOSER TO SURFACE
-        const startX = 0;
-        const startZ = 100; // Much closer to center of mountain
-
-        // Create artwork displays (low-poly frames) - UPDATED for bigger mountain
-        const artworks = [];
-        const artworkPositions = [
-            { x: -20, z: 100, id: 1 },
-            { x: 30, z: 0, id: 2 },
-            { x: -35, z: -80, id: 3 },
-            { x: 25, z: -150, id: 4 },
-            { x: -30, z: -220, id: 5 },
-            { x: 35, z: -280, id: 6 }
-        ];
-
-        artworkPositions.forEach(pos => {
-            const artworkGroup = new THREE.Group();
-
-            // Frame
-            const frameGeometry = new THREE.BoxGeometry(6, 5, 0.3);
-            const frameMaterial = new THREE.MeshStandardMaterial({ color: 0xffd700 });
-            const frame = new THREE.Mesh(frameGeometry, frameMaterial);
-            frame.castShadow = true;
-            artworkGroup.add(frame);
-
-            // Canvas (gradient placeholder)
-            const canvasGeometry = new THREE.PlaneGeometry(5, 4);
-            const canvasMaterial = new THREE.MeshStandardMaterial({
-                color: 0x00d4ff,
-                emissive: 0x003366,
-                emissiveIntensity: 0.3
-            });
-            const canvas = new THREE.Mesh(canvasGeometry, canvasMaterial);
-            canvas.position.z = 0.2;
-            artworkGroup.add(canvas);
-
-            // Floating animation
-            artworkGroup.userData.floatOffset = Math.random() * Math.PI * 2;
-            artworkGroup.userData.id = pos.id;
-
-            // Get terrain height using the actual function (not hardcoded)
-            const terrainHeight = getTerrainHeight(pos.x, pos.z) + 5;
-
-            artworkGroup.position.set(pos.x, terrainHeight, pos.z);
-            artworkGroup.rotation.y = Math.PI;
-
-            scene.add(artworkGroup);
-            artworks.push(artworkGroup);
-        });
-
-        // Add pine trees (low-poly) - THEY FOLLOW TERRAIN NOW
-        function createTree(x, z) {
-            const treeGroup = new THREE.Group();
-
-            // Trunk with realistic material
-            const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.5, 3, 6);
-            const trunkMaterial = new THREE.MeshStandardMaterial({
-                color: 0x4a3728,
-                roughness: 0.9,
-                metalness: 0.0
-            });
-            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-            trunk.castShadow = true;
-            treeGroup.add(trunk);
-
-            // Foliage layers with realistic pine green
-            const foliageMaterial = new THREE.MeshStandardMaterial({
-                color: 0x1a5d2e,
-                roughness: 0.9,
-                metalness: 0.0
-            });
-
-            for (let i = 0; i < 3; i++) {
-                const foliageGeometry = new THREE.ConeGeometry(1.5 - i * 0.3, 2, 6);
-                const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-                foliage.position.y = 2 + i * 1.2;
-                foliage.castShadow = true;
-                treeGroup.add(foliage);
-            }
-
-            // Trees will be positioned later using getTerrainHeight
-            treeGroup.userData.terrainX = x;
-            treeGroup.userData.terrainZ = z;
-
-            return treeGroup;
-        }
-
-        // Add trees along the slope (more trees for bigger mountain)
-        for (let i = 0; i < 80; i++) {
-            const side = Math.random() > 0.5 ? 1 : -1;
-            const x = side * (40 + Math.random() * 80);
-            const z = -300 + Math.random() * 750;
-            const tree = createTree(x, z);
-
-            // Position tree on terrain using getTerrainHeight function
-            const terrainHeight = getTerrainHeight(x, z);
-            tree.position.set(x, terrainHeight + 1.5, z);
-
-            scene.add(tree);
-            // Store tree data for collision detection
-            treeObjects.push({
-                position: new THREE.Vector3(x, terrainHeight, z),
-                radius: 2.5 // Collision radius
-            });
-        }
-
-        // Particles (snow) - MORE particles for bigger mountain
-        const particleGeometry = new THREE.BufferGeometry();
-        const particleCount = 800;
-        const particlePositions = new Float32Array(particleCount * 3);
-
-        for (let i = 0; i < particleCount * 3; i += 3) {
-            particlePositions[i] = (Math.random() - 0.5) * 250;
-            particlePositions[i + 1] = Math.random() * 150;
-            particlePositions[i + 2] = (Math.random() - 0.5) * 250 + skier.position.z;
-        }
-
-        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-        const particleMaterial = new THREE.PointsMaterial({
-            color: 0xffffff,
-            size: 0.5,
-            transparent: true,
-            opacity: 0.8,
-        });
-
-        const particles = new THREE.Points(particleGeometry, particleMaterial);
-        scene.add(particles);
-
-        // Touch controls
-        document.getElementById('left-zone').addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            touchLeft = true;
-        });
-
-        document.getElementById('left-zone').addEventListener('touchend', (e) => {
-            e.preventDefault();
-            touchLeft = false;
-        });
-
-        document.getElementById('right-zone').addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            touchRight = true;
-        });
-
-        document.getElementById('right-zone').addEventListener('touchend', (e) => {
-            e.preventDefault();
-            touchRight = false;
-        });
-
-        // Gyroscope support
-        if (window.DeviceOrientationEvent) {
-            window.addEventListener('deviceorientation', (e) => {
-                if (gameStarted && e.gamma !== null) {
-                    gyroEnabled = true;
-                    skierTilt = e.gamma / 90; // Normalize to -1 to 1
-                }
-            });
-        }
-
-        // Keyboard controls
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-                keyLeft = true;
-                e.preventDefault();
-            }
-            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-                keyRight = true;
-                e.preventDefault();
-            }
-        });
-
-        window.addEventListener('keyup', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-                keyLeft = false;
-            }
-            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-                keyRight = false;
-            }
-        });
-
-        // Start button - Auto start with gentle initial speed
-        document.getElementById('start-button').addEventListener('click', () => {
-            gameStarted = true;
-            gameSpeed = 10; // Start with gentle downhill speed
-            document.getElementById('start-button').style.display = 'none';
-            document.getElementById('controls-info').style.display = 'block';
-        });
-
-        // Popup functions
-        function showPopup(id) {
-            document.getElementById(`popup-${id}`).style.display = 'flex';
-            gameStarted = false;
-        }
-
-        function closePopup(popupId) {
-            document.getElementById(popupId).style.display = 'none';
-            gameStarted = true;
-        }
-        window.closePopup = closePopup;
-
-        // Get terrain height at position (UPDATED for bigger mountain)
-        function getTerrainHeight(x, z) {
-            return (z + 400) * 0.6 +
-                   Math.sin(x * 0.15) * Math.cos(z * 0.12) * 5 +
-                   Math.sin(x * 0.08) * Math.cos(z * 0.08) * 8;
-        }
-
-        // NOW set skier initial position properly on terrain
-        const startHeight = getTerrainHeight(startX, startZ);
-        skier.position.set(startX, startHeight + 2, startZ);
-
-        // Camera setup - positioned behind skier at start
-        const initialCameraHeight = startHeight + 12;
-        camera.position.set(0, initialCameraHeight, startZ + 15);
-        camera.lookAt(skier.position);
-
-        // Get terrain normal (slope direction) for realistic physics
-        function getTerrainNormal(x, z) {
-            const offset = 0.5;
-            const heightCenter = getTerrainHeight(x, z);
-            const heightRight = getTerrainHeight(x + offset, z);
-            const heightForward = getTerrainHeight(x, z - offset);
-
-            const dx = heightRight - heightCenter;
-            const dz = heightForward - heightCenter;
-
-            const normal = new THREE.Vector3(-dx, offset, -dz);
-            normal.normalize();
-
-            return normal;
-        }
-
-        // Get slope angle in degrees
-        function getSlopeAngle(x, z) {
-            const normal = getTerrainNormal(x, z);
-            const angle = Math.acos(normal.y) * 180 / Math.PI;
-            return angle;
-        }
-
-        // Check collision with trees
-        function checkTreeCollision(position) {
-            for (let tree of treeObjects) {
-                const distance = Math.sqrt(
-                    Math.pow(position.x - tree.position.x, 2) +
-                    Math.pow(position.z - tree.position.z, 2)
+        const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        rimLight.position.set(0, 5, -10);
+        scene.add(rimLight);
+
+        // Create tree trunk
+        function createTreeTrunk() {
+            const trunkGroup = new THREE.Group();
+
+            // Main trunk
+            const segments = 8;
+            const trunkHeight = 50;
+
+            for (let i = 0; i < segments; i++) {
+                const y = i * (trunkHeight / segments);
+                const radius = 0.8 - (i * 0.05);
+
+                const geometry = new THREE.CylinderGeometry(
+                    radius * 0.9,
+                    radius,
+                    trunkHeight / segments,
+                    12
                 );
-                if (distance < tree.radius) {
-                    return true;
-                }
+
+                const material = new THREE.MeshStandardMaterial({
+                    color: 0x4a3728,
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+
+                const segment = new THREE.Mesh(geometry, material);
+                segment.position.y = y + (trunkHeight / segments) / 2;
+                segment.castShadow = true;
+                segment.receiveShadow = true;
+                trunkGroup.add(segment);
             }
-            return false;
+
+            return trunkGroup;
         }
 
-        // Check if skier is within bounds (UPDATED for bigger mountain)
-        function isWithinBounds(x, z) {
-            return Math.abs(x) < 140 && z > -350 && z < 390;
+        // Create branches
+        function createBranches() {
+            const branchesGroup = new THREE.Group();
+            const branchCount = 15;
+
+            for (let i = 0; i < branchCount; i++) {
+                const y = 15 + (i * 2);
+                const angle = (i * Math.PI * 0.8) % (Math.PI * 2);
+                const length = 2 + Math.random() * 1.5;
+
+                const branchGeometry = new THREE.CylinderGeometry(
+                    0.08,
+                    0.15,
+                    length,
+                    6
+                );
+
+                const branchMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x3d2817,
+                    roughness: 0.85,
+                    metalness: 0.05
+                });
+
+                const branch = new THREE.Mesh(branchGeometry, branchMaterial);
+                branch.position.set(
+                    Math.cos(angle) * 0.6,
+                    y,
+                    Math.sin(angle) * 0.6
+                );
+                branch.rotation.z = Math.cos(angle) * 0.6;
+                branch.rotation.x = Math.sin(angle) * 0.6;
+                branch.castShadow = true;
+                branch.receiveShadow = true;
+
+                branchesGroup.add(branch);
+
+                // Add leaves to branch
+                const leavesCount = 3 + Math.floor(Math.random() * 3);
+                for (let j = 0; j < leavesCount; j++) {
+                    const leafGeometry = new THREE.SphereGeometry(0.3, 6, 6);
+                    const leafMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x2d5016,
+                        roughness: 0.8,
+                        metalness: 0.0
+                    });
+
+                    const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
+                    const leafDist = (j / leavesCount) * length;
+                    leaf.position.copy(branch.position);
+                    leaf.position.x += Math.cos(angle) * leafDist;
+                    leaf.position.z += Math.sin(angle) * leafDist;
+                    leaf.position.y += Math.random() * 0.5;
+                    leaf.castShadow = true;
+
+                    branchesGroup.add(leaf);
+                }
+            }
+
+            return branchesGroup;
         }
+
+        // Create sign with text
+        function createSign() {
+            const signGroup = new THREE.Group();
+
+            // Sign board
+            const boardGeometry = new THREE.BoxGeometry(6, 2, 0.2);
+            const boardMaterial = new THREE.MeshStandardMaterial({
+                color: 0x2c1810,
+                roughness: 0.7,
+                metalness: 0.2
+            });
+            const board = new THREE.Mesh(boardGeometry, boardMaterial);
+            board.castShadow = true;
+            board.receiveShadow = true;
+            signGroup.add(board);
+
+            // Text using shapes
+            const textGeometry = new THREE.BoxGeometry(5, 1, 0.15);
+            const textMaterial = new THREE.MeshStandardMaterial({
+                color: 0x00d4ff,
+                emissive: 0x00d4ff,
+                emissiveIntensity: 0.3,
+                roughness: 0.4,
+                metalness: 0.6
+            });
+            const text = new THREE.Mesh(textGeometry, textMaterial);
+            text.position.z = 0.2;
+            signGroup.add(text);
+
+            // Support post
+            const postGeometry = new THREE.CylinderGeometry(0.1, 0.1, 3, 8);
+            const postMaterial = new THREE.MeshStandardMaterial({
+                color: 0x2c1810,
+                roughness: 0.8
+            });
+            const post = new THREE.Mesh(postGeometry, postMaterial);
+            post.position.y = -2.5;
+            post.castShadow = true;
+            signGroup.add(post);
+
+            signGroup.position.set(3, 35, 0);
+            signGroup.rotation.y = -0.3;
+
+            return signGroup;
+        }
+
+        // Create portfolio objects
+        function createPortfolioObject(type, yPosition) {
+            const group = new THREE.Group();
+
+            let geometry, material;
+
+            switch(type) {
+                case 'cube':
+                    geometry = new THREE.BoxGeometry(2, 2, 2);
+                    material = new THREE.MeshStandardMaterial({
+                        color: 0xff6b6b,
+                        roughness: 0.3,
+                        metalness: 0.7,
+                        emissive: 0x331111,
+                        emissiveIntensity: 0.2
+                    });
+                    break;
+                case 'sphere':
+                    geometry = new THREE.SphereGeometry(1.2, 32, 32);
+                    material = new THREE.MeshStandardMaterial({
+                        color: 0x4ecdc4,
+                        roughness: 0.2,
+                        metalness: 0.8,
+                        emissive: 0x113333,
+                        emissiveIntensity: 0.2
+                    });
+                    break;
+                case 'torus':
+                    geometry = new THREE.TorusGeometry(1, 0.4, 16, 100);
+                    material = new THREE.MeshStandardMaterial({
+                        color: 0xf7b731,
+                        roughness: 0.4,
+                        metalness: 0.6,
+                        emissive: 0x332200,
+                        emissiveIntensity: 0.2
+                    });
+                    break;
+                case 'octahedron':
+                    geometry = new THREE.OctahedronGeometry(1.5);
+                    material = new THREE.MeshStandardMaterial({
+                        color: 0x5f27cd,
+                        roughness: 0.3,
+                        metalness: 0.7,
+                        emissive: 0x220033,
+                        emissiveIntensity: 0.2
+                    });
+                    break;
+                case 'cone':
+                    geometry = new THREE.ConeGeometry(1, 2.5, 32);
+                    material = new THREE.MeshStandardMaterial({
+                        color: 0x00d2d3,
+                        roughness: 0.3,
+                        metalness: 0.7,
+                        emissive: 0x003333,
+                        emissiveIntensity: 0.2
+                    });
+                    break;
+                default:
+                    geometry = new THREE.BoxGeometry(2, 2, 2);
+                    material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            }
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+
+            const angle = Math.random() * Math.PI * 2;
+            group.position.set(
+                Math.cos(angle) * 4,
+                yPosition,
+                Math.sin(angle) * 4
+            );
+
+            group.userData.rotationSpeed = {
+                x: (Math.random() - 0.5) * 0.01,
+                y: (Math.random() - 0.5) * 0.01
+            };
+
+            return group;
+        }
+
+        // Create scene objects
+        const tree = createTreeTrunk();
+        scene.add(tree);
+
+        const branches = createBranches();
+        scene.add(branches);
+
+        const sign = createSign();
+        scene.add(sign);
+
+        const portfolioObjects = [];
+        const objectTypes = ['cube', 'sphere', 'torus', 'octahedron', 'cone'];
+
+        for (let i = 0; i < 8; i++) {
+            const type = objectTypes[i % objectTypes.length];
+            const yPos = 30 - (i * 6);
+            const obj = createPortfolioObject(type, yPos);
+            scene.add(obj);
+            portfolioObjects.push(obj);
+        }
+
+        // Ground
+        const groundGeometry = new THREE.PlaneGeometry(50, 50);
+        const groundMaterial = new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a,
+            roughness: 0.9,
+            metalness: 0.1
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Particles
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 500;
+        const posArray = new Float32Array(particlesCount * 3);
+
+        for (let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 50;
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.05,
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.6
+        });
+
+        const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particlesMesh);
+
+        // Scroll handling
+        let scrollProgress = 0;
+        window.addEventListener('scroll', () => {
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            scrollProgress = window.pageYOffset / maxScroll;
+
+            // Move camera down as we scroll
+            camera.position.y = 10 - (scrollProgress * 40);
+            controls.target.y = camera.position.y - 2;
+
+            // Hide instructions after first scroll
+            if (scrollProgress > 0.05) {
+                document.getElementById('instructions').classList.add('hide');
+            }
+        });
 
         // Animation loop
-        let lastTime = Date.now();
-
         function animate() {
             requestAnimationFrame(animate);
 
-            const currentTime = Date.now();
-            const deltaTime = (currentTime - lastTime) / 1000;
-            lastTime = currentTime;
+            // Rotate portfolio objects
+            portfolioObjects.forEach(obj => {
+                obj.rotation.x += obj.userData.rotationSpeed.x;
+                obj.rotation.y += obj.userData.rotationSpeed.y;
+            });
 
-            if (gameStarted && !isFalling) {
-                // Physics constants - MORE REALISTIC!
-                const GRAVITY = 35; // Increased gravity for faster descent
-                const FRICTION = 0.985; // Slightly less friction (snow is slippery!)
-                const MAX_SPEED = 90; // Higher max speed for bigger mountain
-                const TURN_SPEED = 2.2; // Slightly harder to turn
-                const SLOPE_ACCELERATION = 25; // Faster acceleration on slopes
+            // Animate particles
+            particlesMesh.rotation.y += 0.0005;
 
-                // Get current terrain info
-                const currentHeight = getTerrainHeight(skier.position.x, skier.position.z);
-                const terrainNormal = getTerrainNormal(skier.position.x, skier.position.z);
-                const slopeAngle = getSlopeAngle(skier.position.x, skier.position.z);
-
-                // Calculate slope-based acceleration
-                // The steeper the slope, the faster we go
-                const slopeAcceleration = Math.sin(slopeAngle * Math.PI / 180) * SLOPE_ACCELERATION;
-
-                // Apply gravity and slope physics
-                gameSpeed += slopeAcceleration * deltaTime;
-                gameSpeed *= FRICTION; // Apply friction
-                gameSpeed = Math.max(0, Math.min(gameSpeed, MAX_SPEED));
-
-                // Steering with speed-based turn rate (keyboard, touch, and gyro)
-                let steerInput = 0;
-                if (touchLeft || keyLeft) steerInput -= 1;
-                if (touchRight || keyRight) steerInput += 1;
-                if (gyroEnabled && Math.abs(skierTilt) > 0.1) {
-                    steerInput += skierTilt * 0.5;
-                }
-
-                // Slower turning at higher speeds (more realistic)
-                const turnRate = TURN_SPEED / (1 + gameSpeed * 0.02);
-                skierRotation += steerInput * turnRate * deltaTime;
-                skier.rotation.y = skierRotation;
-
-                // Calculate next position
-                const moveSpeed = gameSpeed * deltaTime;
-                const nextX = skier.position.x + Math.sin(skierRotation) * moveSpeed;
-                const nextZ = skier.position.z - Math.cos(skierRotation) * moveSpeed;
-
-                // Check boundaries
-                if (!isWithinBounds(nextX, nextZ)) {
-                    isFalling = true;
-                    gameStarted = false;
-                    setTimeout(() => {
-                        document.getElementById('final-count').textContent = discoveredWorks.size;
-                        document.getElementById('game-over').querySelector('h2').textContent = '¡FUERA DE PISTA!';
-                        document.getElementById('game-over').style.display = 'block';
-                    }, 1000);
-                }
-
-                // Check tree collision
-                if (checkTreeCollision(new THREE.Vector3(nextX, 0, nextZ))) {
-                    isFalling = true;
-                    gameSpeed = 0;
-                    gameStarted = false;
-                    setTimeout(() => {
-                        document.getElementById('final-count').textContent = discoveredWorks.size;
-                        document.getElementById('game-over').querySelector('h2').textContent = '¡CHOQUE!';
-                        document.getElementById('game-over').style.display = 'block';
-                    }, 1000);
-                } else {
-                    // Update position
-                    skier.position.x = nextX;
-                    skier.position.z = nextZ;
-                }
-
-                // FIXED terrain collision - NEVER go through mountain
-                const targetHeight = currentHeight + 2; // 2 units above terrain
-
-                // Apply gravity
-                velocityY -= GRAVITY * deltaTime;
-                skier.position.y += velocityY * deltaTime;
-
-                // CRITICAL: Collision detection - prevent going through terrain
-                if (skier.position.y < targetHeight) {
-                    // Hit the ground or inside terrain - STOP and align
-                    skier.position.y = targetHeight; // Force correct position
-
-                    // Check for hard landing based on impact velocity
-                    if (velocityY < -25) {
-                        isFalling = true;
-                        gameStarted = false;
-                        setTimeout(() => {
-                            document.getElementById('final-count').textContent = discoveredWorks.size;
-                            document.getElementById('game-over').querySelector('h2').textContent = '¡CAÍDA FUERTE!';
-                            document.getElementById('game-over').style.display = 'block';
-                        }, 1000);
-                    }
-
-                    // Reset vertical velocity when on ground
-                    velocityY = 0;
-                } else if (skier.position.y < targetHeight + 0.5) {
-                    // Very close to ground - apply damping for smooth riding
-                    const heightDiff = targetHeight - skier.position.y;
-                    skier.position.y += heightDiff * 0.5; // Smooth approach
-                    velocityY *= 0.7; // Dampen velocity near ground
-                }
-
-                // Calculate terrain slope for skier tilt with CENTER OF GRAVITY
-                const forwardHeight = getTerrainHeight(
-                    skier.position.x - Math.sin(skierRotation) * 2,
-                    skier.position.z + Math.cos(skierRotation) * 2
-                );
-                const terrainSlope = (currentHeight - forwardHeight) / 2;
-
-                // IMPROVED skier rotation with balance and center of gravity
-                // Lean into turns but with stability
-                const leanAngle = -steerInput * 0.25 * Math.min(gameSpeed / 30, 1);
-                const maxLean = 0.4; // Maximum lean angle (radians)
-                skier.rotation.z = Math.max(-maxLean, Math.min(maxLean, leanAngle));
-
-                // Match terrain slope with damping for stability
-                const slopeRotation = Math.atan(terrainSlope) * 0.5; // Reduced from 0.7 for more stability
-                skier.rotation.x = slopeRotation;
-
-                // AUTO-BALANCE: Gradually return to upright when not turning
-                if (Math.abs(steerInput) < 0.1) {
-                    skier.rotation.z *= 0.9; // Slowly return to center
-                }
-
-                // More forgiving slope limit - only fall on EXTREME slopes
-                if (slopeAngle > 75) { // Increased from 65 for better playability
-                    isFalling = true;
-                    gameStarted = false;
-                    setTimeout(() => {
-                        document.getElementById('final-count').textContent = discoveredWorks.size;
-                        document.getElementById('game-over').querySelector('h2').textContent = '¡PENDIENTE MUY PRONUNCIADA!';
-                        document.getElementById('game-over').style.display = 'block';
-                    }, 1000);
-                }
-
-                // Check artwork proximity
-                artworks.forEach(artwork => {
-                    const distance = skier.position.distanceTo(artwork.position);
-                    if (distance < 8 && !discoveredWorks.has(artwork.userData.id)) {
-                        discoveredWorks.add(artwork.userData.id);
-                        showPopup(artwork.userData.id);
-                        document.getElementById('works-value').textContent =
-                            `${discoveredWorks.size} / ${artworks.length}`;
-                    }
-
-                    // Floating animation
-                    artwork.position.y = getTerrainHeight(artwork.position.x, artwork.position.z) + 5 +
-                                        Math.sin(Date.now() * 0.001 + artwork.userData.floatOffset) * 0.5;
-                    artwork.rotation.y += 0.01;
-                });
-
-                // Update speed display
-                document.getElementById('speed-value').textContent =
-                    `${Math.round(gameSpeed)} km/h`;
-
-                // Dynamic camera follow (closer at high speeds, farther at low speeds)
-                const cameraDistance = 15 + (gameSpeed / 4);
-                const cameraHeight = 12 + (gameSpeed / 8);
-
-                const cameraOffset = new THREE.Vector3(
-                    Math.sin(skierRotation + Math.PI) * cameraDistance,
-                    cameraHeight,
-                    Math.cos(skierRotation + Math.PI) * cameraDistance
-                );
-
-                // Smooth camera movement
-                const smoothness = 0.08;
-                camera.position.x += (skier.position.x + cameraOffset.x - camera.position.x) * smoothness;
-                camera.position.y += (skier.position.y + cameraOffset.y - camera.position.y) * smoothness;
-                camera.position.z += (skier.position.z + cameraOffset.z - camera.position.z) * smoothness;
-
-                // Look ahead of the skier for better view
-                const lookAheadDistance = 5;
-                const lookAtPoint = new THREE.Vector3(
-                    skier.position.x - Math.sin(skierRotation) * lookAheadDistance,
-                    skier.position.y + 2,
-                    skier.position.z + Math.cos(skierRotation) * lookAheadDistance
-                );
-                camera.lookAt(lookAtPoint);
-
-                // Update particles (more intense snow based on speed)
-                const positions = particles.geometry.attributes.position.array;
-                for (let i = 0; i < positions.length; i += 3) {
-                    // Snow falls faster when moving faster (motion blur effect)
-                    positions[i + 1] -= (gameSpeed * 0.2 + 8) * deltaTime;
-                    positions[i + 2] += gameSpeed * 0.08 * deltaTime; // Trail effect
-
-                    if (positions[i + 1] < -20) {
-                        positions[i + 1] = 150;
-                        positions[i] = (Math.random() - 0.5) * 250 + skier.position.x;
-                        positions[i + 2] = (Math.random() - 0.5) * 200 + skier.position.z - 80;
-                    }
-                }
-                particles.geometry.attributes.position.needsUpdate = true;
-
-                // Adjust particle opacity based on speed (more visible when moving fast)
-                particleMaterial.opacity = 0.5 + (gameSpeed / 120) * 0.5;
-
-                // Check if reached bottom (UPDATED for bigger mountain)
-                if (skier.position.z < -320) {
-                    gameStarted = false;
-                    document.getElementById('final-count').textContent = discoveredWorks.size;
-                    document.getElementById('game-over').querySelector('h2').textContent = '¡FIN DEL RECORRIDO!';
-                    document.getElementById('game-over').style.display = 'block';
-                }
-            }
-
-            // Falling animation
-            if (isFalling) {
-                gameSpeed *= 0.95; // Slow down
-                skier.rotation.x += 0.1; // Tumble forward
-                skier.rotation.z += 0.05; // Tumble sideways
-                velocityY -= 20 * deltaTime; // Keep falling
-                skier.position.y += velocityY * deltaTime;
-
-                // Stop falling after a moment
-                const terrainHeight = getTerrainHeight(skier.position.x, skier.position.z);
-                if (skier.position.y < terrainHeight) {
-                    skier.position.y = terrainHeight;
-                }
-            }
-
-            // UPDATE SHADER UNIFORMS - Animate all GLSL shaders
-            const time = currentTime * 0.001; // Convert to seconds
-
-            // Update mountain snow shader
-            if (mountain.userData.shaderMaterial) {
-                mountain.userData.shaderMaterial.uniforms.time.value = time;
-            }
-
-            // Update skier metallic shaders
-            if (skier.userData.shaderMaterials) {
-                skier.userData.shaderMaterials.forEach(material => {
-                    if (material && material.uniforms && material.uniforms.time) {
-                        material.uniforms.time.value = time;
-                    }
-                });
-            }
-
+            controls.update();
             renderer.render(scene, camera);
         }
 
@@ -1312,11 +551,14 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Hide loading
+        // Hide loading screen
         setTimeout(() => {
-            document.getElementById('loading').style.opacity = '0';
+            document.getElementById('loading').classList.add('fade-out');
             setTimeout(() => {
-                document.getElementById('loading').style.display = 'none';
+                document.getElementById('info-panel').classList.add('active');
+                setTimeout(() => {
+                    document.getElementById('info-panel').classList.remove('active');
+                }, 3000);
             }, 500);
         }, 1500);
 
