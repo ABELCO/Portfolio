@@ -442,7 +442,7 @@
 
         // Scene setup
         const scene = new THREE.Scene();
-        scene.fog = new THREE.Fog(0xe0f7ff, 50, 300);
+        scene.fog = new THREE.Fog(0xe0f7ff, 100, 500); // Extended fog for bigger mountain
 
         const camera = new THREE.PerspectiveCamera(
             60,
@@ -463,32 +463,32 @@
         scene.add(ambientLight);
 
         const sunLight = new THREE.DirectionalLight(0xffffee, 1.2);
-        sunLight.position.set(50, 100, 50);
+        sunLight.position.set(100, 200, 100);
         sunLight.castShadow = true;
         sunLight.shadow.mapSize.width = 2048;
         sunLight.shadow.mapSize.height = 2048;
-        sunLight.shadow.camera.left = -100;
-        sunLight.shadow.camera.right = 100;
-        sunLight.shadow.camera.top = 100;
-        sunLight.shadow.camera.bottom = -100;
+        sunLight.shadow.camera.left = -200;
+        sunLight.shadow.camera.right = 200;
+        sunLight.shadow.camera.top = 200;
+        sunLight.shadow.camera.bottom = -200;
         scene.add(sunLight);
 
-        // Create snow mountain terrain
+        // Create snow mountain terrain - MUCH BIGGER AND STEEPER
         function createSnowMountain() {
-            const geometry = new THREE.PlaneGeometry(200, 400, 100, 200);
+            const geometry = new THREE.PlaneGeometry(300, 800, 150, 300);
             const vertices = geometry.attributes.position.array;
 
             for (let i = 0; i < vertices.length; i += 3) {
                 const x = vertices[i];
                 const y = vertices[i + 1];
 
-                // Create slope going downhill
-                let height = (y + 200) * 0.3;
+                // Create steeper slope going downhill (0.6 instead of 0.3 for more slope)
+                let height = (y + 400) * 0.6;
 
-                // Add bumps and moguls
-                height += Math.sin(x * 0.2) * Math.cos(y * 0.15) * 3;
-                height += Math.sin(x * 0.1) * Math.cos(y * 0.1) * 5;
-                height += (Math.random() - 0.5) * 1.5;
+                // Add bumps and moguls (more pronounced)
+                height += Math.sin(x * 0.15) * Math.cos(y * 0.12) * 5;
+                height += Math.sin(x * 0.08) * Math.cos(y * 0.08) * 8;
+                height += (Math.random() - 0.5) * 2;
 
                 vertices[i + 2] = height;
             }
@@ -576,22 +576,23 @@
             rightPole.castShadow = true;
             skierGroup.add(rightPole);
 
-            skierGroup.position.set(0, 10, 80);
+            // Start position will be set after terrain is created
+            skierGroup.position.set(0, 250, 200);
             return skierGroup;
         }
 
         const skier = createSkier();
         scene.add(skier);
 
-        // Create artwork displays (low-poly frames)
+        // Create artwork displays (low-poly frames) - UPDATED for bigger mountain
         const artworks = [];
         const artworkPositions = [
-            { x: -15, z: 40, id: 1 },
-            { x: 20, z: 10, id: 2 },
-            { x: -25, z: -20, id: 3 },
-            { x: 15, z: -50, id: 4 },
-            { x: -18, z: -80, id: 5 },
-            { x: 22, z: -110, id: 6 }
+            { x: -20, z: 100, id: 1 },
+            { x: 30, z: 0, id: 2 },
+            { x: -35, z: -80, id: 3 },
+            { x: 25, z: -150, id: 4 },
+            { x: -30, z: -220, id: 5 },
+            { x: 35, z: -280, id: 6 }
         ];
 
         artworkPositions.forEach(pos => {
@@ -619,8 +620,8 @@
             artworkGroup.userData.floatOffset = Math.random() * Math.PI * 2;
             artworkGroup.userData.id = pos.id;
 
-            // Get terrain height
-            const terrainHeight = (pos.z + 200) * 0.3 + 5;
+            // Get terrain height using the actual function (not hardcoded)
+            const terrainHeight = getTerrainHeight(pos.x, pos.z) + 5;
 
             artworkGroup.position.set(pos.x, terrainHeight, pos.z);
             artworkGroup.rotation.y = Math.PI;
@@ -629,7 +630,7 @@
             artworks.push(artworkGroup);
         });
 
-        // Add pine trees (low-poly)
+        // Add pine trees (low-poly) - THEY FOLLOW TERRAIN NOW
         function createTree(x, z) {
             const treeGroup = new THREE.Group();
 
@@ -651,35 +652,41 @@
                 treeGroup.add(foliage);
             }
 
-            const terrainHeight = (z + 200) * 0.3;
-            treeGroup.position.set(x, terrainHeight + 1.5, z);
+            // Trees will be positioned later using getTerrainHeight
+            treeGroup.userData.terrainX = x;
+            treeGroup.userData.terrainZ = z;
 
             return treeGroup;
         }
 
-        // Add trees along the slope
-        for (let i = 0; i < 50; i++) {
+        // Add trees along the slope (more trees for bigger mountain)
+        for (let i = 0; i < 80; i++) {
             const side = Math.random() > 0.5 ? 1 : -1;
-            const x = side * (30 + Math.random() * 40);
-            const z = -150 + Math.random() * 400;
+            const x = side * (40 + Math.random() * 80);
+            const z = -300 + Math.random() * 750;
             const tree = createTree(x, z);
+
+            // Position tree on terrain using getTerrainHeight function
+            const terrainHeight = getTerrainHeight(x, z);
+            tree.position.set(x, terrainHeight + 1.5, z);
+
             scene.add(tree);
             // Store tree data for collision detection
             treeObjects.push({
-                position: new THREE.Vector3(x, tree.position.y, z),
-                radius: 2 // Collision radius
+                position: new THREE.Vector3(x, terrainHeight, z),
+                radius: 2.5 // Collision radius
             });
         }
 
-        // Particles (snow)
+        // Particles (snow) - MORE particles for bigger mountain
         const particleGeometry = new THREE.BufferGeometry();
-        const particleCount = 500;
+        const particleCount = 800;
         const particlePositions = new Float32Array(particleCount * 3);
 
         for (let i = 0; i < particleCount * 3; i += 3) {
-            particlePositions[i] = (Math.random() - 0.5) * 150;
-            particlePositions[i + 1] = Math.random() * 100;
-            particlePositions[i + 2] = (Math.random() - 0.5) * 150 + skier.position.z;
+            particlePositions[i] = (Math.random() - 0.5) * 250;
+            particlePositions[i + 1] = Math.random() * 150;
+            particlePositions[i + 2] = (Math.random() - 0.5) * 250 + skier.position.z;
         }
 
         particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
@@ -693,8 +700,8 @@
         const particles = new THREE.Points(particleGeometry, particleMaterial);
         scene.add(particles);
 
-        // Camera setup
-        camera.position.set(0, 15, 90);
+        // Camera setup (UPDATED for bigger mountain)
+        camera.position.set(0, 260, 215);
         camera.lookAt(skier.position);
 
         // Touch controls
@@ -747,11 +754,11 @@
         }
         window.closePopup = closePopup;
 
-        // Get terrain height at position
+        // Get terrain height at position (UPDATED for bigger mountain)
         function getTerrainHeight(x, z) {
-            return (z + 200) * 0.3 +
-                   Math.sin(x * 0.2) * Math.cos(z * 0.15) * 3 +
-                   Math.sin(x * 0.1) * Math.cos(z * 0.1) * 5;
+            return (z + 400) * 0.6 +
+                   Math.sin(x * 0.15) * Math.cos(z * 0.12) * 5 +
+                   Math.sin(x * 0.08) * Math.cos(z * 0.08) * 8;
         }
 
         // Get terrain normal (slope direction) for realistic physics
@@ -791,9 +798,9 @@
             return false;
         }
 
-        // Check if skier is within bounds
+        // Check if skier is within bounds (UPDATED for bigger mountain)
         function isWithinBounds(x, z) {
-            return Math.abs(x) < 80 && z > -160 && z < 200;
+            return Math.abs(x) < 140 && z > -350 && z < 390;
         }
 
         // Animation loop
@@ -807,12 +814,12 @@
             lastTime = currentTime;
 
             if (gameStarted && !isFalling) {
-                // Physics constants
-                const GRAVITY = 20;
-                const FRICTION = 0.98;
-                const MAX_SPEED = 60;
-                const TURN_SPEED = 2.5;
-                const SLOPE_ACCELERATION = 15;
+                // Physics constants - MORE REALISTIC!
+                const GRAVITY = 35; // Increased gravity for faster descent
+                const FRICTION = 0.985; // Slightly less friction (snow is slippery!)
+                const MAX_SPEED = 90; // Higher max speed for bigger mountain
+                const TURN_SPEED = 2.2; // Slightly harder to turn
+                const SLOPE_ACCELERATION = 25; // Faster acceleration on slopes
 
                 // Get current terrain info
                 const currentHeight = getTerrainHeight(skier.position.x, skier.position.z);
@@ -885,8 +892,8 @@
                     skier.position.y = targetHeight;
                     velocityY = 0;
                 } else {
-                    // In the air - check if landing angle is too steep
-                    if (velocityY < -10) {
+                    // In the air - check if landing angle is too steep (higher threshold for more gravity)
+                    if (velocityY < -20) {
                         isFalling = true;
                         gameStarted = false;
                         setTimeout(() => {
@@ -908,8 +915,8 @@
                 skier.rotation.z = -steerInput * 0.3 * (gameSpeed / 30); // Lean into turns
                 skier.rotation.x = Math.atan(terrainSlope) * 0.7; // Match terrain slope
 
-                // Check for too steep slopes
-                if (slopeAngle > 50) {
+                // Check for too steep slopes (increased limit for bigger mountain)
+                if (slopeAngle > 65) {
                     isFalling = true;
                     gameStarted = false;
                     setTimeout(() => {
@@ -968,22 +975,22 @@
                 const positions = particles.geometry.attributes.position.array;
                 for (let i = 0; i < positions.length; i += 3) {
                     // Snow falls faster when moving faster (motion blur effect)
-                    positions[i + 1] -= (gameSpeed * 0.15 + 5) * deltaTime;
-                    positions[i + 2] += gameSpeed * 0.05 * deltaTime; // Trail effect
+                    positions[i + 1] -= (gameSpeed * 0.2 + 8) * deltaTime;
+                    positions[i + 2] += gameSpeed * 0.08 * deltaTime; // Trail effect
 
-                    if (positions[i + 1] < -10) {
-                        positions[i + 1] = 100;
-                        positions[i] = (Math.random() - 0.5) * 150 + skier.position.x;
-                        positions[i + 2] = (Math.random() - 0.5) * 100 + skier.position.z - 50;
+                    if (positions[i + 1] < -20) {
+                        positions[i + 1] = 150;
+                        positions[i] = (Math.random() - 0.5) * 250 + skier.position.x;
+                        positions[i + 2] = (Math.random() - 0.5) * 200 + skier.position.z - 80;
                     }
                 }
                 particles.geometry.attributes.position.needsUpdate = true;
 
                 // Adjust particle opacity based on speed (more visible when moving fast)
-                particleMaterial.opacity = 0.6 + (gameSpeed / 100) * 0.4;
+                particleMaterial.opacity = 0.5 + (gameSpeed / 120) * 0.5;
 
-                // Check if reached bottom
-                if (skier.position.z < -140) {
+                // Check if reached bottom (UPDATED for bigger mountain)
+                if (skier.position.z < -320) {
                     gameStarted = false;
                     document.getElementById('final-count').textContent = discoveredWorks.size;
                     document.getElementById('game-over').querySelector('h2').textContent = '¡FIN DEL RECORRIDO!';
