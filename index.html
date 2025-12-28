@@ -30,7 +30,7 @@
         #scroll-content {
             position: relative;
             z-index: 10;
-            height: 500vh; /* Allows scrolling */
+            height: 1000vh; /* Extended for longer tree */
             pointer-events: none;
         }
 
@@ -148,13 +148,13 @@
     </div>
 
     <div id="instructions">
-        <p>🖱️ Arrastra para orbitar • 📜 Scroll para explorar</p>
+        <p>📜 Scroll para descender por el árbol</p>
     </div>
 
     <div class="info-panel" id="info-panel">
         <h2>Bienvenido</h2>
-        <p>Explora mi portfolio navegando hacia abajo.</p>
-        <p>Descubre proyectos y trabajos mientras desciendes por el árbol.</p>
+        <p>Comienza tu viaje desde la copa del árbol.</p>
+        <p>Desciende para descubrir mis proyectos hasta llegar a la montaña.</p>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -162,17 +162,17 @@
     <script>
         // Scene setup
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0a0a);
-        scene.fog = new THREE.FogExp2(0x0a0a0a, 0.015);
+        scene.background = new THREE.Color(0x87CEEB); // Sky blue at top
+        scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
 
-        // Camera
+        // Camera - starting high at tree top
         const camera = new THREE.PerspectiveCamera(
             75,
             window.innerWidth / window.innerHeight,
             0.1,
             1000
         );
-        camera.position.set(8, 10, 8);
+        camera.position.set(12, 150, 12); // Start at the top!
 
         // Renderer with high quality settings
         const renderer = new THREE.WebGLRenderer({
@@ -189,64 +189,63 @@
         renderer.toneMappingExposure = 1.3;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-        // OrbitControls with limits
+        // OrbitControls - initially disabled
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.enableZoom = true;
-        controls.minDistance = 5;
-        controls.maxDistance = 25;
-        controls.maxPolarAngle = Math.PI / 1.8;
+        controls.minDistance = 10;
+        controls.maxDistance = 50;
+        controls.maxPolarAngle = Math.PI / 1.5;
         controls.minPolarAngle = Math.PI / 4;
         controls.enablePan = false;
+        controls.enabled = false; // Disabled at start
 
         // Lighting setup
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         scene.add(ambientLight);
 
         const hemisphereLight = new THREE.HemisphereLight(
-            0x87CEEB,
-            0x2c1810,
-            0.6
+            0x87CEEB,  // Sky color
+            0x3d2817,  // Ground color
+            0.7
         );
         scene.add(hemisphereLight);
 
-        const mainLight = new THREE.DirectionalLight(0xfff4e6, 1.2);
-        mainLight.position.set(10, 20, 10);
+        const mainLight = new THREE.DirectionalLight(0xfff4e6, 1.5);
+        mainLight.position.set(30, 100, 30);
         mainLight.castShadow = true;
         mainLight.shadow.mapSize.width = 2048;
         mainLight.shadow.mapSize.height = 2048;
         mainLight.shadow.camera.near = 0.1;
-        mainLight.shadow.camera.far = 50;
-        mainLight.shadow.camera.left = -20;
-        mainLight.shadow.camera.right = 20;
-        mainLight.shadow.camera.top = 20;
-        mainLight.shadow.camera.bottom = -20;
+        mainLight.shadow.camera.far = 200;
+        mainLight.shadow.camera.left = -50;
+        mainLight.shadow.camera.right = 50;
+        mainLight.shadow.camera.top = 50;
+        mainLight.shadow.camera.bottom = -50;
         mainLight.shadow.bias = -0.001;
         scene.add(mainLight);
 
-        const fillLight = new THREE.DirectionalLight(0x4a90e2, 0.4);
-        fillLight.position.set(-5, 5, -5);
+        const fillLight = new THREE.DirectionalLight(0x4a90e2, 0.5);
+        fillLight.position.set(-20, 50, -20);
         scene.add(fillLight);
 
-        const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        rimLight.position.set(0, 5, -10);
+        const rimLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        rimLight.position.set(0, 80, -30);
         scene.add(rimLight);
 
-        // Create tree trunk
+        // Create tall tree trunk
         function createTreeTrunk() {
             const trunkGroup = new THREE.Group();
-
-            // Main trunk
-            const segments = 8;
-            const trunkHeight = 50;
+            const segments = 25;
+            const trunkHeight = 150; // Much taller!
 
             for (let i = 0; i < segments; i++) {
                 const y = i * (trunkHeight / segments);
-                const radius = 0.8 - (i * 0.05);
+                const radius = 1.2 - (i * 0.03); // Thicker at base, thinner at top
 
                 const geometry = new THREE.CylinderGeometry(
-                    radius * 0.9,
+                    radius * 0.92,
                     radius,
                     trunkHeight / segments,
                     12
@@ -268,19 +267,19 @@
             return trunkGroup;
         }
 
-        // Create branches
+        // Create many branches along the tree
         function createBranches() {
             const branchesGroup = new THREE.Group();
-            const branchCount = 15;
+            const branchCount = 50; // Many more branches!
 
             for (let i = 0; i < branchCount; i++) {
-                const y = 15 + (i * 2);
-                const angle = (i * Math.PI * 0.8) % (Math.PI * 2);
-                const length = 2 + Math.random() * 1.5;
+                const y = 30 + (i * 2.4); // Spread from y=30 to y=150
+                const angle = (i * Math.PI * 1.3) % (Math.PI * 2);
+                const length = 2.5 + Math.random() * 2;
 
                 const branchGeometry = new THREE.CylinderGeometry(
                     0.08,
-                    0.15,
+                    0.18,
                     length,
                     6
                 );
@@ -292,22 +291,23 @@
                 });
 
                 const branch = new THREE.Mesh(branchGeometry, branchMaterial);
+                const radiusAtHeight = 1.2 - ((y / 150) * 1.0);
                 branch.position.set(
-                    Math.cos(angle) * 0.6,
+                    Math.cos(angle) * radiusAtHeight,
                     y,
-                    Math.sin(angle) * 0.6
+                    Math.sin(angle) * radiusAtHeight
                 );
-                branch.rotation.z = Math.cos(angle) * 0.6;
-                branch.rotation.x = Math.sin(angle) * 0.6;
+                branch.rotation.z = Math.cos(angle) * 0.7;
+                branch.rotation.x = Math.sin(angle) * 0.7;
                 branch.castShadow = true;
                 branch.receiveShadow = true;
 
                 branchesGroup.add(branch);
 
                 // Add leaves to branch
-                const leavesCount = 3 + Math.floor(Math.random() * 3);
+                const leavesCount = 4 + Math.floor(Math.random() * 4);
                 for (let j = 0; j < leavesCount; j++) {
-                    const leafGeometry = new THREE.SphereGeometry(0.3, 6, 6);
+                    const leafGeometry = new THREE.SphereGeometry(0.35, 6, 6);
                     const leafMaterial = new THREE.MeshStandardMaterial({
                         color: 0x2d5016,
                         roughness: 0.8,
@@ -329,12 +329,12 @@
             return branchesGroup;
         }
 
-        // Create sign with text
+        // Create sign at top
         function createSign() {
             const signGroup = new THREE.Group();
 
             // Sign board
-            const boardGeometry = new THREE.BoxGeometry(6, 2, 0.2);
+            const boardGeometry = new THREE.BoxGeometry(7, 2.5, 0.3);
             const boardMaterial = new THREE.MeshStandardMaterial({
                 color: 0x2c1810,
                 roughness: 0.7,
@@ -345,37 +345,113 @@
             board.receiveShadow = true;
             signGroup.add(board);
 
-            // Text using shapes
-            const textGeometry = new THREE.BoxGeometry(5, 1, 0.15);
+            // Text representation
+            const textGeometry = new THREE.BoxGeometry(6, 1.5, 0.2);
             const textMaterial = new THREE.MeshStandardMaterial({
                 color: 0x00d4ff,
                 emissive: 0x00d4ff,
-                emissiveIntensity: 0.3,
-                roughness: 0.4,
-                metalness: 0.6
+                emissiveIntensity: 0.4,
+                roughness: 0.3,
+                metalness: 0.7
             });
             const text = new THREE.Mesh(textGeometry, textMaterial);
-            text.position.z = 0.2;
+            text.position.z = 0.3;
             signGroup.add(text);
 
             // Support post
-            const postGeometry = new THREE.CylinderGeometry(0.1, 0.1, 3, 8);
+            const postGeometry = new THREE.CylinderGeometry(0.15, 0.15, 4, 8);
             const postMaterial = new THREE.MeshStandardMaterial({
                 color: 0x2c1810,
                 roughness: 0.8
             });
             const post = new THREE.Mesh(postGeometry, postMaterial);
-            post.position.y = -2.5;
+            post.position.y = -3;
             post.castShadow = true;
             signGroup.add(post);
 
-            signGroup.position.set(3, 35, 0);
-            signGroup.rotation.y = -0.3;
+            signGroup.position.set(4, 145, 0); // At the very top!
+            signGroup.rotation.y = -0.4;
 
             return signGroup;
         }
 
-        // Create portfolio objects
+        // Create mountain at base
+        function createMountain() {
+            const mountainGroup = new THREE.Group();
+
+            // Main mountain mesh
+            const geometry = new THREE.PlaneGeometry(100, 100, 80, 80);
+            const vertices = geometry.attributes.position.array;
+
+            // Create mountain terrain by modifying vertices
+            for (let i = 0; i < vertices.length; i += 3) {
+                const x = vertices[i];
+                const y = vertices[i + 1];
+
+                // Distance from center
+                const dist = Math.sqrt(x * x + y * y);
+
+                // Create mountain peak at center, slopes down
+                let height = Math.max(0, 25 - (dist * 0.5));
+
+                // Add noise for natural look
+                height += Math.sin(x * 0.3) * Math.cos(y * 0.3) * 2;
+                height += Math.sin(x * 0.1) * Math.cos(y * 0.15) * 4;
+
+                vertices[i + 2] = height;
+            }
+
+            geometry.computeVertexNormals();
+
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x4a7c59,
+                roughness: 0.9,
+                metalness: 0.1,
+                flatShading: false
+            });
+
+            const mountain = new THREE.Mesh(geometry, material);
+            mountain.rotation.x = -Math.PI / 2;
+            mountain.position.y = -5;
+            mountain.receiveShadow = true;
+            mountain.castShadow = true;
+
+            mountainGroup.add(mountain);
+
+            // Add snow cap
+            const snowGeometry = new THREE.PlaneGeometry(40, 40, 40, 40);
+            const snowVertices = snowGeometry.attributes.position.array;
+
+            for (let i = 0; i < snowVertices.length; i += 3) {
+                const x = snowVertices[i];
+                const y = snowVertices[i + 1];
+                const dist = Math.sqrt(x * x + y * y);
+
+                let height = Math.max(0, 20 - (dist * 0.5));
+                height += Math.sin(x * 0.3) * Math.cos(y * 0.3) * 1.5;
+
+                snowVertices[i + 2] = height + 1;
+            }
+
+            snowGeometry.computeVertexNormals();
+
+            const snowMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                roughness: 0.6,
+                metalness: 0.2
+            });
+
+            const snow = new THREE.Mesh(snowGeometry, snowMaterial);
+            snow.rotation.x = -Math.PI / 2;
+            snow.position.y = 15;
+            snow.receiveShadow = true;
+
+            mountainGroup.add(snow);
+
+            return mountainGroup;
+        }
+
+        // Create portfolio objects distributed along tree
         function createPortfolioObject(type, yPosition) {
             const group = new THREE.Group();
 
@@ -383,7 +459,7 @@
 
             switch(type) {
                 case 'cube':
-                    geometry = new THREE.BoxGeometry(2, 2, 2);
+                    geometry = new THREE.BoxGeometry(2.5, 2.5, 2.5);
                     material = new THREE.MeshStandardMaterial({
                         color: 0xff6b6b,
                         roughness: 0.3,
@@ -393,7 +469,7 @@
                     });
                     break;
                 case 'sphere':
-                    geometry = new THREE.SphereGeometry(1.2, 32, 32);
+                    geometry = new THREE.SphereGeometry(1.5, 32, 32);
                     material = new THREE.MeshStandardMaterial({
                         color: 0x4ecdc4,
                         roughness: 0.2,
@@ -403,7 +479,7 @@
                     });
                     break;
                 case 'torus':
-                    geometry = new THREE.TorusGeometry(1, 0.4, 16, 100);
+                    geometry = new THREE.TorusGeometry(1.2, 0.5, 16, 100);
                     material = new THREE.MeshStandardMaterial({
                         color: 0xf7b731,
                         roughness: 0.4,
@@ -413,7 +489,7 @@
                     });
                     break;
                 case 'octahedron':
-                    geometry = new THREE.OctahedronGeometry(1.5);
+                    geometry = new THREE.OctahedronGeometry(1.8);
                     material = new THREE.MeshStandardMaterial({
                         color: 0x5f27cd,
                         roughness: 0.3,
@@ -423,12 +499,32 @@
                     });
                     break;
                 case 'cone':
-                    geometry = new THREE.ConeGeometry(1, 2.5, 32);
+                    geometry = new THREE.ConeGeometry(1.2, 3, 32);
                     material = new THREE.MeshStandardMaterial({
                         color: 0x00d2d3,
                         roughness: 0.3,
                         metalness: 0.7,
                         emissive: 0x003333,
+                        emissiveIntensity: 0.2
+                    });
+                    break;
+                case 'dodecahedron':
+                    geometry = new THREE.DodecahedronGeometry(1.5);
+                    material = new THREE.MeshStandardMaterial({
+                        color: 0xff6348,
+                        roughness: 0.3,
+                        metalness: 0.8,
+                        emissive: 0x331100,
+                        emissiveIntensity: 0.2
+                    });
+                    break;
+                case 'torusknot':
+                    geometry = new THREE.TorusKnotGeometry(1, 0.3, 100, 16);
+                    material = new THREE.MeshStandardMaterial({
+                        color: 0x9b59b6,
+                        roughness: 0.2,
+                        metalness: 0.9,
+                        emissive: 0x220022,
                         emissiveIntensity: 0.2
                     });
                     break;
@@ -444,9 +540,9 @@
 
             const angle = Math.random() * Math.PI * 2;
             group.position.set(
-                Math.cos(angle) * 4,
+                Math.cos(angle) * 6,
                 yPosition,
-                Math.sin(angle) * 4
+                Math.sin(angle) * 6
             );
 
             group.userData.rotationSpeed = {
@@ -467,45 +563,38 @@
         const sign = createSign();
         scene.add(sign);
 
-        const portfolioObjects = [];
-        const objectTypes = ['cube', 'sphere', 'torus', 'octahedron', 'cone'];
+        const mountain = createMountain();
+        scene.add(mountain);
 
-        for (let i = 0; i < 8; i++) {
+        // Portfolio objects distributed along the tree
+        const portfolioObjects = [];
+        const objectTypes = ['cube', 'sphere', 'torus', 'octahedron', 'cone', 'dodecahedron', 'torusknot'];
+
+        for (let i = 0; i < 15; i++) {
             const type = objectTypes[i % objectTypes.length];
-            const yPos = 30 - (i * 6);
+            const yPos = 130 - (i * 8); // Spread from top (130) to bottom (10)
             const obj = createPortfolioObject(type, yPos);
             scene.add(obj);
             portfolioObjects.push(obj);
         }
 
-        // Ground
-        const groundGeometry = new THREE.PlaneGeometry(50, 50);
-        const groundMaterial = new THREE.MeshStandardMaterial({
-            color: 0x1a1a1a,
-            roughness: 0.9,
-            metalness: 0.1
-        });
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-        ground.rotation.x = -Math.PI / 2;
-        ground.position.y = -2;
-        ground.receiveShadow = true;
-        scene.add(ground);
-
-        // Particles
+        // Particles/stars
         const particlesGeometry = new THREE.BufferGeometry();
-        const particlesCount = 500;
+        const particlesCount = 800;
         const posArray = new Float32Array(particlesCount * 3);
 
-        for (let i = 0; i < particlesCount * 3; i++) {
-            posArray[i] = (Math.random() - 0.5) * 50;
+        for (let i = 0; i < particlesCount * 3; i += 3) {
+            posArray[i] = (Math.random() - 0.5) * 100;     // x
+            posArray[i + 1] = Math.random() * 200;          // y (0 to 200)
+            posArray[i + 2] = (Math.random() - 0.5) * 100;  // z
         }
 
         particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
         const particlesMaterial = new THREE.PointsMaterial({
-            size: 0.05,
+            size: 0.08,
             color: 0xffffff,
             transparent: true,
-            opacity: 0.6
+            opacity: 0.7
         });
 
         const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
@@ -517,13 +606,42 @@
             const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
             scrollProgress = window.pageYOffset / maxScroll;
 
-            // Move camera down as we scroll
-            camera.position.y = 10 - (scrollProgress * 40);
-            controls.target.y = camera.position.y - 2;
+            // Camera descends from top (150) to bottom (0)
+            const targetY = 150 - (scrollProgress * 160);
+            camera.position.y = targetY;
+            controls.target.y = targetY - 3;
+
+            // Update fog and background based on height
+            if (targetY > 80) {
+                // High up - sky blue
+                scene.background.setHex(0x87CEEB);
+                scene.fog.color.setHex(0x87CEEB);
+            } else if (targetY > 30) {
+                // Mid height - transition
+                scene.background.setHex(0x6a9fb5);
+                scene.fog.color.setHex(0x6a9fb5);
+            } else {
+                // Near ground - darker
+                scene.background.setHex(0x4a7c89);
+                scene.fog.color.setHex(0x4a7c89);
+            }
+
+            // Enable orbit controls when near the bottom
+            if (scrollProgress > 0.85) {
+                controls.enabled = true;
+                document.getElementById('instructions').innerHTML = '<p>🖱️ Arrastra para orbitar la montaña</p>';
+            } else {
+                controls.enabled = false;
+            }
 
             // Hide instructions after first scroll
             if (scrollProgress > 0.05) {
                 document.getElementById('instructions').classList.add('hide');
+            }
+
+            // Show again near bottom
+            if (scrollProgress > 0.85) {
+                document.getElementById('instructions').classList.remove('hide');
             }
         });
 
@@ -538,7 +656,7 @@
             });
 
             // Animate particles
-            particlesMesh.rotation.y += 0.0005;
+            particlesMesh.rotation.y += 0.0003;
 
             controls.update();
             renderer.render(scene, camera);
@@ -558,7 +676,7 @@
                 document.getElementById('info-panel').classList.add('active');
                 setTimeout(() => {
                     document.getElementById('info-panel').classList.remove('active');
-                }, 3000);
+                }, 4000);
             }, 500);
         }, 1500);
 
